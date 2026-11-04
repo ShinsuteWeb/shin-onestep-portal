@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シンOneStepポータル</title>
+<style>
+  :root{--bg:#f5f4ef;--card:#fff;--ink:#24362b;--muted:#68756e;--line:#e7e4dc;--green:#4e8067;--green-dark:#3c6752}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 18px 48px}
+  header{text-align:center;margin-bottom:26px}
+  header .mark{font-size:30px}
+  header h1{font-size:26px;margin:8px 0 6px;letter-spacing:.02em}
+  header p{margin:0;color:var(--muted);font-size:13px;line-height:1.7}
+  main{width:min(100%,440px)}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 24px;box-shadow:0 16px 44px rgba(36,54,43,.08)}
+  .panel h2{margin:0 0 6px;font-size:18px}
+  .panel .desc{margin:0 0 18px;color:var(--muted);font-size:13px;line-height:1.7}
+  label{display:block;margin-bottom:8px;font-size:14px;font-weight:700}
+  input[type=password]{width:100%;height:48px;padding:0 14px;border:1px solid #d9ded8;border-radius:12px;font:inherit}
+  button.primary{width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:var(--green);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+  button.primary:hover{background:var(--green-dark)}
+  button.primary:disabled{opacity:.55;cursor:wait}
+  .error{min-height:22px;margin-top:10px;color:#b33;font-size:13px}
+  .menu{display:grid;gap:12px}
+  a.card{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;color:var(--ink);text-decoration:none;box-shadow:0 8px 24px rgba(36,54,43,.05)}
+  a.card:hover{border-color:#b9cfc0;transform:translateY(-1px)}
+  a.card .icon{font-size:26px}
+  a.card .t{font-size:16px;font-weight:700}
+  a.card .s{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+  a.card .arrow{margin-left:auto;color:var(--muted);font-size:20px}
+  .status{margin-top:18px;text-align:center;color:var(--muted);font-size:12px;line-height:1.8}
+  .logout{margin-top:10px;background:none;border:1px solid #d9ded8;color:var(--muted);border-radius:10px;padding:8px 16px;font:inherit;font-size:12px;cursor:pointer}
+  .logout:hover{color:#b33;border-color:#b33}
+  [hidden]{display:none!important}
+  footer{margin-top:auto;padding-top:28px;color:var(--muted);font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <div class="mark">✦</div>
+  <h1>シンOneStepポータル</h1>
+  <p>高齢者オタク向けオープンチャット<br>「シンOneStep」のメンバー向け入口です</p>
+</header>
+<main>
+  <!-- ログイン -->
+  <section class="panel" id="loginPanel">
+    <h2>パスワードを入力してください</h2>
+    <p class="desc">最初に1回だけ入力すれば、この端末・ブラウザでは30日間、各サイトで入れ直さなくてよくなります。</p>
+    <form id="loginForm">
+      <label for="pw">共通パスワード</label>
+      <input type="password" id="pw" autocomplete="current-password" required>
+      <button class="primary" id="loginBtn" type="submit">ポータルを開く</button>
+      <div class="error" id="loginError" role="alert"></div>
+    </form>
+  </section>
+
+  <!-- メニュー -->
+  <section id="menuPanel" hidden>
+    <div class="menu">
+      <a class="card" href="https://shinsuteweb.github.io/shin-onestep-profile2/">
+        <span class="icon">👥</span>
+        <span><span class="t">メンバー紹介</span><span class="s">自己紹介サイト</span></span>
+        <span class="arrow">›</span>
+      </a>
+      <a class="card" href="https://shinsuteweb.github.io/Shinsute-odai-archive/">
+        <span class="icon">📚</span>
+        <span><span class="t">お題アーカイブ</span><span class="s">毎週のお題と回答の記録</span></span>
+        <span class="arrow">›</span>
+      </a>
+      <a class="card" href="https://shinsuteweb.github.io/shin-onestep-AnimeVote3/">
+        <span class="icon">🗳️</span>
+        <span><span class="t">アニメ投票</span><span class="s">今期の視聴アニメ投票</span></span>
+        <span class="arrow">›</span>
+      </a>
+    </div>
+    <div class="status">
+      <div id="remainText"></div>
+      <button class="logout" id="logoutBtn" type="button">ログアウト（この端末の保存を消す）</button>
+    </div>
+  </section>
+</main>
+<footer>ShinOneStep Portal</footer>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "onestep.portal.v1";
+  var HASH = "14e18b67771a66cb08559baef772ba9537688e3f5996e44beefbb8d9ae11772b";
+  var DAYS = 30;
+  var SUPABASE_URL = "https://dtihrpjoengpakwipehl.supabase.co";
+  var SUPABASE_KEY = "sb_publishable__d5BEd58nkRFmlfbneFvfw_nyBCzvIX";
+  var FALLBACK_URL = "https://shinsuteweb.github.io/shin-onestep-profile2/profiles.enc.json";
+  var ITERATIONS = 600000;
+  var AAD = new TextEncoder().encode("shin-onestep-profile-v1");
+  var enc = function(s){ return new TextEncoder().encode(s); };
+  var fromHex = function(h){ var a = new Uint8Array(h.length / 2); for (var i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; };
+
+  var loginPanel = document.getElementById("loginPanel");
+  var menuPanel = document.getElementById("menuPanel");
+  var remainText = document.getElementById("remainText");
+
+  function readStore(){
+    try {
+      var j = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (!j || !j.pw || !j.exp) return null;
+      if (Date.now() > j.exp) { localStorage.removeItem(KEY); return null; }
+      return j;
+    } catch (e) { return null; }
+  }
+  function writeStore(pw){
+    try { localStorage.setItem(KEY, JSON.stringify({ pw: pw, exp: Date.now() + DAYS * 24 * 60 * 60 * 1000 })); } catch (e) {}
+  }
+  function showMenu(j){
+    loginPanel.hidden = true;
+    menuPanel.hidden = false;
+    var left = Math.max(0, Math.ceil((j.exp - Date.now()) / (24 * 60 * 60 * 1000)));
+    remainText.textContent = "ログイン中（この端末ではあと約" + left + "日間、パスワード入力なしで開けます）";
+  }
+  function showLogin(){
+    menuPanel.hidden = true;
+    loginPanel.hidden = false;
+  }
+  async function sha256hex(s){
+    var d = await crypto.subtle.digest("SHA-256", enc(s));
+    return Array.from(new Uint8Array(d)).map(function(b){ return b.toString(16).padStart(2, "0"); }).join("");
+  }
+  async function fetchBundle(){
+    try {
+      var r = await fetch(SUPABASE_URL + "/rest/v1/rpc/get_profile_bundle", {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+        body: "{}"
+      });
+      if (r.ok) { var j = await r.json(); if (j && j.ciphertext) return j; }
+    } catch (e) {}
+    var r2 = await fetch(FALLBACK_URL, { cache: "no-store" });
+    if (!r2.ok) throw new Error("bundle fetch failed");
+    return r2.json();
+  }
+  async function canDecrypt(pw){
+    var box = await fetchBundle();
+    var material = await crypto.subtle.importKey("raw", enc(pw), "PBKDF2", false, ["deriveKey"]);
+    var key = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: fromHex(box.salt), iterations: ITERATIONS, hash: "SHA-256" },
+      material, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(box.nonce), additionalData: AAD }, key, fromHex(box.ciphertext));
+    return true;
+  }
+
+  var saved = readStore();
+  if (saved) showMenu(saved);
+
+  document.getElementById("loginForm").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var btn = document.getElementById("loginBtn");
+    var err = document.getElementById("loginError");
+    var pw = document.getElementById("pw").value;
+    err.textContent = "";
+    btn.disabled = true; btn.textContent = "確認中…";
+    try {
+      if (await sha256hex(pw) !== HASH) throw new Error("bad password");
+      try { await canDecrypt(pw); }
+      catch (de) {
+        // 通信できない等で復号確認ができなかった場合は、ハッシュ一致をもって許可する
+        if (de && de.name === "OperationError") throw new Error("bad password");
+      }
+      writeStore(pw);
+      showMenu(readStore());
+    } catch (ex) {
+      err.textContent = "パスワードが違います。もう一度入力してください。";
+      document.getElementById("pw").select();
+    } finally {
+      btn.disabled = false; btn.textContent = "ポータルを開く";
+    }
+  });
+
+  document.getElementById("logoutBtn").addEventListener("click", function(){
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    showLogin();
+  });
+})();
+</script>
+</body>
+</html>
