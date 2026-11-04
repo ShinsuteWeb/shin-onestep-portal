@@ -49,10 +49,15 @@
   .status{margin-top:18px;text-align:center;color:var(--muted);font-size:12px;line-height:1.8}
   .logout{margin-top:10px;background:none;border:1px solid #d9ded8;color:var(--muted);border-radius:10px;padding:8px 16px;font:inherit;font-size:12px;cursor:pointer}
   .logout:hover{color:#b33;border-color:#b33}
-  .bday-today{font-size:16px;font-weight:700;line-height:1.8;margin:0 0 6px}
-  .bday-list{margin:0;padding:0;list-style:none;font-size:14px;line-height:1.9}
-  .bday-list .d{color:var(--green);font-weight:700;margin-right:8px}
-  .bday-note{margin:8px 0 0;color:var(--muted);font-size:12px}
+  .bday-h{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--muted);margin:0 0 6px}
+  .bday-row{display:flex;gap:14px;align-items:center;padding:7px 0}
+  .bday-cal{flex:none;width:60px;background:#fff;border:1.5px solid #ddd6c8;border-radius:10px;overflow:hidden;text-align:center}
+  .bday-cal .m{background:#c94f4f;color:#fff;font-size:11px;font-weight:700;padding:3px 0}
+  .bday-cal .d{font-size:25px;font-weight:800;line-height:1.2}
+  .bday-cal .w{font-size:10px;color:var(--muted);padding-bottom:4px}
+  .bday-name{font-size:17px;font-weight:700}
+  .bday-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .bday-sub.today{color:#c0392b;font-weight:700}
   [hidden]{display:none!important}
   footer{margin-top:auto;padding-top:28px;color:var(--muted);font-size:11px}
 </style>
@@ -76,8 +81,8 @@
   </section>
 
   <!-- お誕生日（解錠後に読み込む） -->
-  <section class="panel" id="birthdayPanel" hidden style="margin-bottom:14px">
-    <h2>🎂 お誕生日</h2>
+  <section id="birthdayPanel" hidden style="margin-bottom:20px;padding:0 4px">
+    <h2 class="bday-h">🎂 お誕生日</h2>
     <div id="birthdayBody"></div>
   </section>
 
@@ -200,22 +205,19 @@
       list.forEach(function(p){
         for (var add = 0; add <= 7; add++) {
           var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + add);
-          if (d.getMonth() + 1 === p.month && d.getDate() === p.day) { hits.push({ name: p.name, add: add, month: p.month, day: p.day }); break; }
+          if (d.getMonth() + 1 === p.month && d.getDate() === p.day) { hits.push({ name: p.name, add: add, month: p.month, day: p.day, wd: d.getDay() }); break; }
         }
       });
       if (!hits.length) return;
       hits.sort(function(a, b){ return a.add - b.add; });
-      var html = "";
-      var today = hits.filter(function(h){ return h.add === 0; });
-      var later = hits.filter(function(h){ return h.add > 0; });
-      if (today.length) {
-        html += '<p class="bday-today">今日は ' + today.map(function(h){ return escapeHtml(h.name) + "さん"; }).join("、") + " の誕生日です！🎉</p>";
-      }
-      if (later.length) {
-        html += '<ul class="bday-list">' + later.map(function(h){
-          return "<li><span class=\"d\">" + h.month + "/" + h.day + "</span>" + escapeHtml(h.name) + "さん（あと" + h.add + "日）</li>";
-        }).join("") + "</ul>";
-      }
+      var wdNames = ["日", "月", "火", "水", "木", "金", "土"];
+      var html = hits.map(function(h){
+        var sub = h.add === 0
+          ? '<div class="bday-sub today">今日が誕生日です！🎉</div>'
+          : '<div class="bday-sub">あと' + h.add + '日・' + h.month + '月' + h.day + '日（' + wdNames[h.wd] + '）</div>';
+        return '<div class="bday-row"><div class="bday-cal"><div class="m">' + h.month + '月</div><div class="d">' + h.day + '</div><div class="w">' + wdNames[h.wd] + '曜日</div></div>'
+          + '<div><div class="bday-name">' + escapeHtml(h.name) + ' さん</div>' + sub + '</div></div>';
+      }).join("");
       document.getElementById("birthdayBody").innerHTML = html;
       document.getElementById("birthdayPanel").hidden = false;
     } catch (e) {}
