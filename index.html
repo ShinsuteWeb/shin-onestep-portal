@@ -42,6 +42,10 @@
   .status{margin-top:18px;text-align:center;color:var(--muted);font-size:12px;line-height:1.8}
   .logout{margin-top:10px;background:none;border:1px solid #d9ded8;color:var(--muted);border-radius:10px;padding:8px 16px;font:inherit;font-size:12px;cursor:pointer}
   .logout:hover{color:#b33;border-color:#b33}
+  .bday-today{font-size:16px;font-weight:700;line-height:1.8;margin:0 0 6px}
+  .bday-list{margin:0;padding:0;list-style:none;font-size:14px;line-height:1.9}
+  .bday-list .d{color:var(--green);font-weight:700;margin-right:8px}
+  .bday-note{margin:8px 0 0;color:var(--muted);font-size:12px}
   [hidden]{display:none!important}
   footer{margin-top:auto;padding-top:28px;color:var(--muted);font-size:11px}
 </style>
@@ -62,6 +66,12 @@
       <button class="primary" id="loginBtn" type="submit">ポータルを開く</button>
       <div class="error" id="loginError" role="alert"></div>
     </form>
+  </section>
+
+  <!-- お誕生日（解錠後に読み込む） -->
+  <section class="panel" id="birthdayPanel" hidden style="margin-bottom:14px">
+    <h2>🎂 お誕生日</h2>
+    <div id="birthdayBody"></div>
   </section>
 
   <!-- メニュー -->
@@ -128,6 +138,7 @@
   }
   function showLogin(){
     menuPanel.hidden = true;
+    document.getElementById("birthdayPanel").hidden = true;
     loginPanel.hidden = false;
   }
   async function sha256hex(s){
@@ -147,18 +158,73 @@
     if (!r2.ok) throw new Error("bundle fetch failed");
     return r2.json();
   }
-  async function canDecrypt(pw){
+  async function decryptPages(pw){
     var box = await fetchBundle();
     var material = await crypto.subtle.importKey("raw", enc(pw), "PBKDF2", false, ["deriveKey"]);
     var key = await crypto.subtle.deriveKey(
       { name: "PBKDF2", salt: fromHex(box.salt), iterations: ITERATIONS, hash: "SHA-256" },
       material, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
-    await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(box.nonce), additionalData: AAD }, key, fromHex(box.ciphertext));
-    return true;
+    var plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(box.nonce), additionalData: AAD }, key, fromHex(box.ciphertext));
+    var inflated = await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer();
+    return JSON.parse(new TextDecoder().decode(inflated));
+  }
+
+  function parseBirthdays(contents){
+    var out = [];
+    var tables = String(contents || "").match(/<table>[\s\S]*?<\/table>/g) || [];
+    tables.forEach(function(t){
+      var nm = t.match(/<strong>名前：<\/strong>([^<]+)/);
+      var bd = t.match(/<strong>誕生日：<\/strong>([^<]+)/);
+      if (!nm || !bd) return;
+      var raw = bd[1].trim();
+      var dm = raw.match(/(\d{1,2})\s*\/\s*(\d{1,2})/) || raw.match(/(\d{1,2})月\s*(\d{1,2})日/);
+      if (!dm) return;
+      out.push({ name: nm[1].trim(), month: +dm[1], day: +dm[2] });
+    });
+    return out;
+  }
+
+  function renderBirthdays(pages){
+    try {
+      var list = parseBirthdays(pages && pages.contents);
+      if (!list.length) return;
+      var now = new Date();
+      var hits = [];
+      list.forEach(function(p){
+        for (var add = 0; add <= 7; add++) {
+          var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + add);
+          if (d.getMonth() + 1 === p.month && d.getDate() === p.day) { hits.push({ name: p.name, add: add, month: p.month, day: p.day }); break; }
+        }
+      });
+      if (!hits.length) return;
+      hits.sort(function(a, b){ return a.add - b.add; });
+      var html = "";
+      var today = hits.filter(function(h){ return h.add === 0; });
+      var later = hits.filter(function(h){ return h.add > 0; });
+      if (today.length) {
+        html += '<p class="bday-today">今日は ' + today.map(function(h){ return escapeHtml(h.name) + "さん"; }).join("、") + " の誕生日です！🎉</p>";
+      }
+      if (later.length) {
+        html += '<ul class="bday-list">' + later.map(function(h){
+          return "<li><span class=\"d\">" + h.month + "/" + h.day + "</span>" + escapeHtml(h.name) + "さん（あと" + h.add + "日）</li>";
+        }).join("") + "</ul>";
+      }
+      document.getElementById("birthdayBody").innerHTML = html;
+      document.getElementById("birthdayPanel").hidden = false;
+    } catch (e) {}
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
+  }
+
+  function loadBirthdays(pw){
+    decryptPages(pw).then(renderBirthdays).catch(function(e){
+      if (e && e.name === "OperationError") { try { localStorage.removeItem(KEY); } catch (x) {} showLogin(); }
+    });
   }
 
   var saved = readStore();
-  if (saved) showMenu(saved);
+  if (saved) { showMenu(saved); loadBirthdays(saved.pw); }
 
   document.getElementById("loginForm").addEventListener("submit", async function(e){
     e.preventDefault();
@@ -169,13 +235,15 @@
     btn.disabled = true; btn.textContent = "確認中…";
     try {
       if (await sha256hex(pw) !== HASH) throw new Error("bad password");
-      try { await canDecrypt(pw); }
+      var pages = null;
+      try { pages = await decryptPages(pw); }
       catch (de) {
         // 通信できない等で復号確認ができなかった場合は、ハッシュ一致をもって許可する
         if (de && de.name === "OperationError") throw new Error("bad password");
       }
       writeStore(pw);
       showMenu(readStore());
+      if (pages) renderBirthdays(pages); else loadBirthdays(pw);
     } catch (ex) {
       err.textContent = "パスワードが違います。もう一度入力してください。";
       document.getElementById("pw").select();
