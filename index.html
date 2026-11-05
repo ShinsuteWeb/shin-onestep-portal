@@ -65,6 +65,16 @@
   a.room .t{font-size:13.5px;font-weight:700}
   a.room .s{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}
   a.room .open{margin-left:auto;flex:none;background:var(--green);color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:6px 14px}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(36,54,43,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal{background:var(--card);border-radius:18px;padding:24px 22px;max-width:400px;width:100%;box-shadow:0 20px 50px rgba(36,54,43,.25)}
+  .modal h3{margin:0 0 10px;font-size:16px}
+  .modal p{margin:0 0 10px;font-size:13px;line-height:1.8;color:var(--ink)}
+  .modal ul{margin:0 0 14px;padding-left:18px;font-size:13px;line-height:1.8}
+  .modal .ask{font-weight:700;margin-bottom:16px}
+  .modal .btns{display:flex;gap:10px}
+  .modal .btns button{flex:1;padding:12px;border-radius:12px;font:inherit;font-weight:700;cursor:pointer}
+  .modal .cancel{background:#fff;border:1px solid #d9ded8;color:var(--muted)}
+  .modal .go{background:var(--green);border:0;color:#fff}
   [hidden]{display:none!important}
   footer{margin-top:auto;padding-top:28px;color:var(--muted);font-size:11px}
 </style>
@@ -145,6 +155,11 @@
         <span><span class="t">管理人室</span><span class="s">管理人へのご相談に（秘密厳守）</span></span>
         <span class="open">開く</span>
       </a>
+      <a class="room" href="#" id="dormantRoom">
+        <span class="icon">💤</span>
+        <span><span class="t">休眠サブルーム（会話禁止）</span><span class="s">一時お休みしたい人のための部屋</span></span>
+        <span class="open">開く</span>
+      </a>
     </div>
     <div class="status">
       <div id="remainText"></div>
@@ -153,6 +168,23 @@
   </section>
 </main>
 <footer>ShinOneStep Portal</footer>
+
+<!-- 休眠サブルームの確認モーダル -->
+<div class="modal-backdrop" id="dormantModal" hidden>
+  <div class="modal">
+    <h3>💤 休眠サブルームについて</h3>
+    <p>この部屋は、仕事が忙しいなどの理由でオープンチャットにしばらく参加できない人のための「お休み用」の部屋です。</p>
+    <ul>
+      <li>この部屋のみに所属していただき、復帰できるようになるまでお休みください</li>
+      <li>この部屋では会話は禁止です</li>
+    </ul>
+    <p class="ask">それでも入りますか？</p>
+    <div class="btns">
+      <button class="cancel" id="dormantCancel" type="button">やめる</button>
+      <button class="go" id="dormantGo" type="button">それでも入る</button>
+    </div>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -171,6 +203,23 @@
   var loginPanel = document.getElementById("loginPanel");
   var menuPanel = document.getElementById("menuPanel");
   var remainText = document.getElementById("remainText");
+
+  // 休眠サブルームは確認モーダルを挟んでから遷移する
+  var DORMANT_URL = "https://line.me/ti/g2/BBtNhWaCIstskWlYbZUlDZ_ppbvG08Dwm9A-nA";
+  var dormantModal = document.getElementById("dormantModal");
+  document.getElementById("dormantRoom").addEventListener("click", function(e){
+    e.preventDefault();
+    dormantModal.hidden = false;
+  });
+  document.getElementById("dormantCancel").addEventListener("click", function(){
+    dormantModal.hidden = true;
+  });
+  dormantModal.addEventListener("click", function(e){
+    if (e.target === dormantModal) dormantModal.hidden = true;
+  });
+  document.getElementById("dormantGo").addEventListener("click", function(){
+    location.href = DORMANT_URL;
+  });
 
   function readStore(){
     try {
