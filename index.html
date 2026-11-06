@@ -57,6 +57,13 @@
   .bday-name{font-size:13px;font-weight:700}
   .bday-sub{font-size:10px;color:var(--muted);margin-top:0}
   .bday-sub.today{color:#c0392b;font-weight:700}
+  .vote-row{display:flex;gap:6px;align-items:baseline;padding:2px 0}
+  .vote-rank{flex:none;font-size:13px}
+  .vote-title{font-size:13px;font-weight:700}
+  .vote-count{flex:none;font-size:11px;color:var(--muted);font-weight:700}
+  .vote-foot{display:flex;justify-content:space-between;align-items:center;margin-top:3px}
+  .vote-foot span{font-size:10px;color:var(--muted)}
+  .vote-link{font-size:11px;font-weight:700;color:var(--green-dark);text-decoration:none}
   .rooms-h{font-size:15px;font-weight:700;margin:26px 0 4px;padding:0 4px}
   .rooms-big{font-size:18px;font-weight:800;margin:28px 0 2px;padding:0 4px}
   .rooms-desc{font-size:12px;color:var(--muted);margin:0 0 10px;padding:0 4px}
@@ -103,6 +110,13 @@
   <section id="birthdayPanel" hidden style="margin-bottom:8px;padding:0 4px">
     <h2 class="bday-h">🎂 お誕生日</h2>
     <div id="birthdayBody"></div>
+  </section>
+
+  <!-- アニメ投票の途中経過（解錠後に読み込む） -->
+  <section id="votePanel" hidden style="margin-bottom:8px;padding:0 4px">
+    <h2 class="bday-h">📺 2026秋アニメ投票 途中経過</h2>
+    <div id="voteBody"></div>
+    <div class="vote-foot"><span id="voteMeta"></span><a class="vote-link" href="https://shinsuteweb.github.io/shin-onestep-AnimeVote3/">投票ページへ ›</a></div>
   </section>
 
   <!-- メニュー -->
@@ -254,6 +268,7 @@
   function showLogin(){
     menuPanel.hidden = true;
     document.getElementById("birthdayPanel").hidden = true;
+    document.getElementById("votePanel").hidden = true;
     loginPanel.hidden = false;
   }
   async function sha256hex(s){
@@ -335,8 +350,45 @@
     });
   }
 
+  async function fetchVotes(){
+    var r = await fetch(SUPABASE_URL + "/rest/v1/rpc/get_anime_votes", {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+      body: "{}"
+    });
+    if (!r.ok) throw new Error("votes fetch failed");
+    return r.json();
+  }
+  function renderVotes(data){
+    try {
+      if (!data) return;
+      var counts = {};
+      var voters = 0;
+      Object.keys(data).forEach(function(name){
+        var titles = (data[name] && data[name].titles) || [];
+        voters++;
+        titles.forEach(function(t){ counts[t] = (counts[t] || 0) + 1; });
+      });
+      var ranked = Object.keys(counts).map(function(t){ return { t: t, c: counts[t] }; });
+      ranked.sort(function(a, b){ return b.c - a.c || (a.t < b.t ? -1 : a.t > b.t ? 1 : 0); });
+      if (!ranked.length) return;
+      var medals = ["🥇", "🥈", "🥉"];
+      var html = ranked.slice(0, 3).map(function(x, i){
+        return '<div class="vote-row"><span class="vote-rank">' + medals[i] + '</span>'
+          + '<span class="vote-title">『' + escapeHtml(x.t) + '』</span>'
+          + '<span class="vote-count">' + x.c + '票</span></div>';
+      }).join("");
+      document.getElementById("voteBody").innerHTML = html;
+      document.getElementById("voteMeta").textContent = "投票者" + voters + "名・全" + ranked.length + "作品に投票中";
+      document.getElementById("votePanel").hidden = false;
+    } catch (e) {}
+  }
+  function loadVotes(){
+    fetchVotes().then(renderVotes).catch(function(){});
+  }
+
   var saved = readStore();
-  if (saved) { showMenu(saved); loadBirthdays(saved.pw); }
+  if (saved) { showMenu(saved); loadBirthdays(saved.pw); loadVotes(); }
 
   document.getElementById("loginForm").addEventListener("submit", async function(e){
     e.preventDefault();
@@ -356,6 +408,7 @@
       writeStore(pw);
       showMenu(readStore());
       if (pages) renderBirthdays(pages); else loadBirthdays(pw);
+      loadVotes();
     } catch (ex) {
       err.textContent = "パスワードが違います。もう一度入力してください。";
       document.getElementById("pw").select();
