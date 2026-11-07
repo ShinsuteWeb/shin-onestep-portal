@@ -64,6 +64,11 @@
   .vote-foot{display:flex;justify-content:space-between;align-items:center;margin-top:3px}
   .vote-foot span{font-size:10px;color:var(--muted)}
   .vote-link{font-size:11px;font-weight:700;color:var(--green-dark);text-decoration:none}
+  .thread-row{display:flex;gap:6px;align-items:baseline;padding:2px 0}
+  .thread-title{font-size:13px;font-weight:700}
+  .thread-left{flex:none;margin-left:auto;font-size:11px;color:var(--muted);font-weight:700}
+  .thread-left.soon{color:#c0392b}
+  .thread-note{font-size:10px;color:var(--muted);margin-top:3px}
   .rooms-h{font-size:15px;font-weight:700;margin:26px 0 4px;padding:0 4px}
   .rooms-big{font-size:18px;font-weight:800;margin:28px 0 2px;padding:0 4px}
   .rooms-desc{font-size:12px;color:var(--muted);margin:0 0 10px;padding:0 4px}
@@ -117,6 +122,13 @@
     <h2 class="bday-h">📺 2026秋アニメ投票 途中経過</h2>
     <div id="voteBody"></div>
     <div class="vote-foot"><span id="voteMeta"></span><a class="vote-link" href="https://shinsuteweb.github.io/shin-onestep-AnimeVote3/">投票ページへ ›</a></div>
+  </section>
+
+  <!-- 稼働中の感想スレッド（解錠後に読み込む） -->
+  <section id="threadPanel" hidden style="margin-bottom:8px;padding:0 4px">
+    <h2 class="bday-h">🧵 稼働中の感想スレッド</h2>
+    <div id="threadBody"></div>
+    <div class="thread-note">最新作の感想はスレッドでお願いします（スレッドは作成から3週間有効）</div>
   </section>
 
   <!-- メニュー -->
@@ -269,6 +281,7 @@
     menuPanel.hidden = true;
     document.getElementById("birthdayPanel").hidden = true;
     document.getElementById("votePanel").hidden = true;
+    document.getElementById("threadPanel").hidden = true;
     loginPanel.hidden = false;
   }
   async function sha256hex(s){
@@ -387,8 +400,43 @@
     fetchVotes().then(renderVotes).catch(function(){});
   }
 
+  async function fetchThreads(){
+    var r = await fetch("threads.json", { cache: "no-store" });
+    if (!r.ok) throw new Error("threads fetch failed");
+    return r.json();
+  }
+  function renderThreads(list){
+    try {
+      if (!Array.isArray(list)) return;
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      var rows = [];
+      list.forEach(function(t){
+        var m = String(t.created || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m || !t.title) return;
+        var expiry = new Date(+m[1], +m[2] - 1, +m[3] + 21);
+        var left = Math.round((expiry - today) / 86400000);
+        if (left < 0) return;
+        rows.push({ title: t.title, left: left });
+      });
+      if (!rows.length) return;
+      rows.sort(function(a, b){ return a.left - b.left; });
+      var html = rows.map(function(x){
+        var label = x.left === 0 ? "今日まで" : "あと" + x.left + "日";
+        var cls = x.left <= 3 ? "thread-left soon" : "thread-left";
+        return '<div class="thread-row"><span class="thread-title">' + escapeHtml(x.title) + '</span>'
+          + '<span class="' + cls + '">' + label + '</span></div>';
+      }).join("");
+      document.getElementById("threadBody").innerHTML = html;
+      document.getElementById("threadPanel").hidden = false;
+    } catch (e) {}
+  }
+  function loadThreads(){
+    fetchThreads().then(renderThreads).catch(function(){});
+  }
+
   var saved = readStore();
-  if (saved) { showMenu(saved); loadBirthdays(saved.pw); loadVotes(); }
+  if (saved) { showMenu(saved); loadBirthdays(saved.pw); loadVotes(); loadThreads(); }
 
   document.getElementById("loginForm").addEventListener("submit", async function(e){
     e.preventDefault();
@@ -408,7 +456,7 @@
       writeStore(pw);
       showMenu(readStore());
       if (pages) renderBirthdays(pages); else loadBirthdays(pw);
-      loadVotes();
+      loadVotes(); loadThreads();
     } catch (ex) {
       err.textContent = "パスワードが違います。もう一度入力してください。";
       document.getElementById("pw").select();
