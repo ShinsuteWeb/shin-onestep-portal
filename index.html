@@ -93,7 +93,13 @@
   [hidden]{display:none!important}
   footer{margin-top:auto;padding-top:28px;color:var(--muted);font-size:11px;text-shadow:0 1px 8px rgba(255,255,255,.9),0 0 3px rgba(255,255,255,.95)}
   .status{text-shadow:0 1px 8px rgba(255,255,255,.9),0 0 3px rgba(255,255,255,.95)}
-  .rooms-big,.rooms-sub,.rooms-desc,.thread-h,.thread-note{text-shadow:0 1px 8px rgba(255,255,255,.85),0 0 3px rgba(255,255,255,.9)}
+  .rooms-big,.rooms-sub,.rooms-desc{display:inline-block;background:rgba(255,255,255,.82);border-radius:999px}
+  .rooms-big{padding:6px 14px}
+  .rooms-sub{padding:4px 12px}
+  .rooms-desc{padding:3px 10px}
+  .thread-h,.thread-note{text-shadow:0 1px 8px rgba(255,255,255,.85),0 0 3px rgba(255,255,255,.9)}
+  .status{background:rgba(255,255,255,.82);border-radius:14px;padding:10px 16px}
+  .foot-pill{background:rgba(255,255,255,.82);padding:4px 12px;border-radius:999px}
   #birthdayPanel,#votePanel,#threadPanel{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(36,54,43,.05)}
 </style>
 </head>
@@ -213,7 +219,7 @@
     </div>
   </section>
 </main>
-<footer>ShinOneStep Portal</footer>
+<footer><span class="foot-pill">ShinOneStep Portal</span></footer>
 
 <!-- 休眠サブルームの確認モーダル -->
 <div class="modal-backdrop" id="dormantModal" hidden>
