@@ -25,9 +25,10 @@
   :root{--bg:#f5f4ef;--card:#fff;--ink:#24362b;--muted:#68756e;--line:#e7e4dc;--green:#4e8067;--green-dark:#3c6752}
   *{box-sizing:border-box}
   body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 18px 48px}
+  body::before{content:"";position:fixed;inset:0;background:url("bg.jpg") center center/cover no-repeat;z-index:-1}
   header{text-align:center;margin-bottom:10px}
-  header .mark{font-size:18px}
-  header h1{font-size:22px;margin:3px 0 2px;letter-spacing:.02em}
+  header .mark{font-size:18px;text-shadow:0 1px 10px rgba(255,255,255,.85),0 0 3px rgba(255,255,255,.9)}
+  header h1{font-size:22px;margin:3px 0 2px;letter-spacing:.02em;text-shadow:0 1px 10px rgba(255,255,255,.85),0 0 3px rgba(255,255,255,.9)}
   header p{margin:0;color:var(--muted);font-size:13px;line-height:1.7}
   main{width:min(100%,440px)}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 24px;box-shadow:0 16px 44px rgba(36,54,43,.08)}
@@ -91,7 +92,10 @@
   .modal .cancel{background:#fff;border:1px solid #d9ded8;color:var(--muted)}
   .modal .go{background:var(--green);border:0;color:#fff}
   [hidden]{display:none!important}
-  footer{margin-top:auto;padding-top:28px;color:var(--muted);font-size:11px}
+  footer{margin-top:auto;padding-top:28px;color:var(--muted);font-size:11px;text-shadow:0 1px 8px rgba(255,255,255,.9),0 0 3px rgba(255,255,255,.95)}
+  .status{text-shadow:0 1px 8px rgba(255,255,255,.9),0 0 3px rgba(255,255,255,.95)}
+  .rooms-big,.rooms-sub,.rooms-desc,.thread-h,.thread-note{text-shadow:0 1px 8px rgba(255,255,255,.85),0 0 3px rgba(255,255,255,.9)}
+  #birthdayPanel,#votePanel,#threadPanel{background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(36,54,43,.05)}
 </style>
 </head>
 <body>
@@ -114,7 +118,7 @@
 
 
   <!-- お誕生日（解錠後に読み込む） -->
-  <section id="birthdayPanel" hidden style="margin-bottom:8px;padding:0 4px">
+  <section id="birthdayPanel" hidden style="margin-bottom:8px;padding:10px 12px">
     <h2 class="bday-h">🎂 お誕生日</h2>
     <div id="birthdayBody"></div>
   </section>
@@ -141,7 +145,7 @@
       </a>
 
   <!-- アニメ投票の途中経過（解錠後に読み込む） -->
-  <section id="votePanel" hidden style="margin-bottom:8px;padding:0 4px">
+  <section id="votePanel" hidden style="margin-bottom:8px;padding:10px 12px">
     <h2 class="bday-h">📺 2026秋アニメ投票 途中経過</h2>
     <div id="voteBody"></div>
     <div class="vote-foot"><span id="voteMeta"></span><a class="vote-link" href="https://shinsuteweb.github.io/shin-onestep-AnimeVote3/">投票ページへ ›</a></div>
@@ -153,7 +157,7 @@
       </a>
     </div>
   <!-- 稼働中の感想スレッド（解錠後に読み込む） -->
-  <section id="threadPanel" hidden style="margin-bottom:8px;padding:0 4px">
+  <section id="threadPanel" hidden style="margin-bottom:8px;padding:10px 12px">
     <h2 class="thread-h">🧵 稼働中の感想スレッド</h2>
     <div id="threadBody"></div>
     <div class="thread-note">最新作の感想はスレッドでお願いします（スレッドは作成から3週間有効）</div>
