@@ -459,13 +459,18 @@
       var today = new Date(); today.setHours(0, 0, 0, 0);
       var end = new Date(+m[1], +m[2] - 1, +m[3]);
       var left = Math.round((end - today) / 86400000);
-      if (left < 0) return;
       var wd = ["日", "月", "火", "水", "木", "金", "土"][end.getDay()];
-      var leftLabel = left === 0 ? "今日が最終日" : "あと" + left + "日";
-      var leftCls = left <= 2 ? "thread-left soon" : "thread-left";
+      var ended = left < 0;
+      var leftLabel = ended ? (end.getMonth() + 1) + "/" + end.getDate() + "(" + wd + ")で終了" : (end.getMonth() + 1) + "/" + end.getDate() + "(" + wd + ")まで・" + (left === 0 ? "今日が最終日" : "あと" + left + "日");
+      var leftCls = (!ended && left <= 2) ? "thread-left soon" : "thread-left";
+      var noteText = ended ? "受付は終了しました" : "回答はメインルームで受付中";
+      if (ended) {
+        var h = document.querySelector("#themePanel .thread-h");
+        if (h) h.textContent = "📝 前回のお題";
+      }
       var html = '<div class="thread-row"><span class="thread-title" style="font-size:15.5px">第' + (+t.no) + '回　' + escapeHtml(t.title) + '</span></div>'
-        + '<div class="thread-row"><span class="thread-note" style="margin:0">回答はメインルームで受付中</span>'
-        + '<span class="' + leftCls + '">' + (end.getMonth() + 1) + "/" + end.getDate() + "(" + wd + ")まで・" + leftLabel + '</span></div>'
+        + '<div class="thread-row"><span class="thread-note" style="margin:0">' + noteText + '</span>'
+        + '<span class="' + leftCls + '">' + leftLabel + '</span></div>'
         + '<div style="margin-top:6px"><a href="https://shinsuteweb.github.io/Shinsute-odai-archive/" style="color:var(--green-dark);font-weight:700;font-size:13.5px;text-decoration:none">過去のお題アーカイブを見る ›</a></div>';
       document.getElementById("themeBody").innerHTML = html;
       document.getElementById("themePanel").hidden = false;
