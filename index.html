@@ -100,7 +100,7 @@
   .thread-h,.thread-note{text-shadow:0 1px 8px rgba(255,255,255,.85),0 0 3px rgba(255,255,255,.9)}
   .status{background:rgba(255,255,255,.82);border-radius:14px;padding:10px 16px}
   .foot-pill{background:rgba(255,255,255,.82);padding:4px 12px;border-radius:999px}
-  #birthdayPanel,#votePanel,#threadPanel{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(36,54,43,.05)}
+  #birthdayPanel,#votePanel,#threadPanel,#themePanel{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(36,54,43,.05)}
 </style>
 </head>
 <body>
@@ -137,11 +137,6 @@
         <span><span class="t">メンバー紹介</span><span class="s">自己紹介サイト</span></span>
         <span class="arrow">›</span>
       </a>
-      <a class="card" href="https://shinsuteweb.github.io/Shinsute-odai-archive/">
-        <span class="icon">📚</span>
-        <span><span class="t">お題アーカイブ</span><span class="s">毎週のお題と回答の記録</span></span>
-        <span class="arrow">›</span>
-      </a>
       <a class="card" href="https://shinsuteweb.github.io/shin-onestep-AnimeVote3/">
         <span class="icon">🗳️</span>
         <span><span class="t">アニメ投票</span><span class="s">今期の視聴アニメ投票</span></span>
@@ -160,6 +155,12 @@
         <span class="arrow">›</span>
       </a>
     </div>
+  <!-- 今週のお題（解錠後に読み込む） -->
+  <section id="themePanel" hidden style="margin-top:16px;margin-bottom:8px;padding:10px 12px">
+    <h2 class="thread-h">📝 今週のお題</h2>
+    <div id="themeBody"></div>
+  </section>
+
   <!-- 稼働中の感想スレッド（解錠後に読み込む） -->
   <section id="threadPanel" hidden style="margin-top:16px;margin-bottom:8px;padding:10px 12px">
     <h2 class="thread-h">🧵 稼働中の感想スレッド</h2>
@@ -445,6 +446,35 @@
       document.getElementById("threadPanel").hidden = false;
     } catch (e) {}
   }
+  async function fetchTheme(){
+    var r = await fetch("theme.json", { cache: "no-store" });
+    if (!r.ok) throw new Error("theme fetch failed");
+    return r.json();
+  }
+  function renderTheme(t){
+    try {
+      if (!t || !t.title || !t.end) return;
+      var m = String(t.end).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return;
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var end = new Date(+m[1], +m[2] - 1, +m[3]);
+      var left = Math.round((end - today) / 86400000);
+      if (left < 0) return;
+      var wd = ["日", "月", "火", "水", "木", "金", "土"][end.getDay()];
+      var leftLabel = left === 0 ? "今日が最終日" : "あと" + left + "日";
+      var leftCls = left <= 2 ? "thread-left soon" : "thread-left";
+      var html = '<div class="thread-row"><span class="thread-title" style="font-size:15.5px">第' + (+t.no) + '回　' + escapeHtml(t.title) + '</span></div>'
+        + '<div class="thread-row"><span class="thread-note" style="margin:0">回答はメインルームで受付中</span>'
+        + '<span class="' + leftCls + '">' + (end.getMonth() + 1) + "/" + end.getDate() + "(" + wd + ")まで・" + leftLabel + '</span></div>'
+        + '<div style="margin-top:6px"><a href="https://shinsuteweb.github.io/Shinsute-odai-archive/" style="color:var(--green-dark);font-weight:700;font-size:13.5px;text-decoration:none">過去のお題アーカイブを見る ›</a></div>';
+      document.getElementById("themeBody").innerHTML = html;
+      document.getElementById("themePanel").hidden = false;
+    } catch (e) {}
+  }
+  function loadTheme(){
+    fetchTheme().then(renderTheme).catch(function(){});
+  }
+
   function loadThreads(){
     fetchThreads().then(renderThreads).catch(function(){});
   }
@@ -488,7 +518,7 @@
   }
 
   var saved = readStore();
-  if (saved) { showMenu(saved); loadBirthdays(saved.pw); loadVotes(); loadThreads(); loadVisits(); }
+  if (saved) { showMenu(saved); loadBirthdays(saved.pw); loadVotes(); loadThreads(); loadVisits(); loadTheme(); loadTheme(); }
 
   document.getElementById("loginForm").addEventListener("submit", async function(e){
     e.preventDefault();
@@ -508,7 +538,7 @@
       writeStore(pw);
       showMenu(readStore());
       if (pages) renderBirthdays(pages); else loadBirthdays(pw);
-      loadVotes(); loadThreads(); loadVisits();
+      loadVotes(); loadThreads(); loadVisits(); loadTheme();
     } catch (ex) {
       err.textContent = "パスワードが違います。もう一度入力してください。";
       document.getElementById("pw").select();
