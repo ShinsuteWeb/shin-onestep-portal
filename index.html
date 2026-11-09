@@ -137,6 +137,11 @@
         <span><span class="t">メンバー紹介</span><span class="s">自己紹介サイト</span></span>
         <span class="arrow">›</span>
       </a>
+      <a class="card" href="https://shinsuteweb.github.io/shin-onestep-offkai/">
+        <span class="icon">🎉</span>
+        <span><span class="t">オフ会の記録</span><span class="s">これまでのオフ会の記録</span></span>
+        <span class="arrow">›</span>
+      </a>
       <a class="card" href="https://shinsuteweb.github.io/shin-onestep-AnimeVote3/">
         <span class="icon">🗳️</span>
         <span><span class="t">アニメ投票</span><span class="s">今期の視聴アニメ投票</span></span>
@@ -149,11 +154,6 @@
     <div id="voteBody"></div>
     <div class="vote-foot"><span id="voteMeta"></span><a class="vote-link" href="https://shinsuteweb.github.io/shin-onestep-AnimeVote3/">投票ページへ ›</a></div>
   </section>
-      <a class="card" href="https://shinsuteweb.github.io/shin-onestep-offkai/">
-        <span class="icon">🎉</span>
-        <span><span class="t">オフ会の記録</span><span class="s">これまでのオフ会の記録</span></span>
-        <span class="arrow">›</span>
-      </a>
     </div>
   <!-- 今週のお題（解錠後に読み込む） -->
   <section id="themePanel" hidden style="margin-top:16px;margin-bottom:8px;padding:10px 12px">
@@ -461,13 +461,9 @@
       var left = Math.round((end - today) / 86400000);
       var wd = ["日", "月", "火", "水", "木", "金", "土"][end.getDay()];
       var ended = left < 0;
-      var leftLabel = ended ? (end.getMonth() + 1) + "/" + end.getDate() + "(" + wd + ")で終了" : (end.getMonth() + 1) + "/" + end.getDate() + "(" + wd + ")まで・" + (left === 0 ? "今日が最終日" : "あと" + left + "日");
+      var leftLabel = ended ? "次回のお題まで受付中" : (end.getMonth() + 1) + "/" + end.getDate() + "(" + wd + ")まで・" + (left === 0 ? "今日が最終日" : "あと" + left + "日");
       var leftCls = (!ended && left <= 2) ? "thread-left soon" : "thread-left";
-      var noteText = ended ? "受付は終了しました" : "回答はメインルームで受付中";
-      if (ended) {
-        var h = document.querySelector("#themePanel .thread-h");
-        if (h) h.textContent = "📝 前回のお題";
-      }
+      var noteText = "回答はメインルームで受付中";
       var html = '<div class="thread-row"><span class="thread-title" style="font-size:15.5px">第' + (+t.no) + '回　' + escapeHtml(t.title) + '</span></div>'
         + '<div class="thread-row"><span class="thread-note" style="margin:0">' + noteText + '</span>'
         + '<span class="' + leftCls + '">' + leftLabel + '</span></div>'
