@@ -103,7 +103,17 @@
   .thread-h,.thread-note{text-shadow:0 1px 8px rgba(255,255,255,.85),0 0 3px rgba(255,255,255,.9)}
   .status{background:rgba(255,255,255,.82);border-radius:14px;padding:10px 16px}
   .foot-pill{background:rgba(255,255,255,.82);padding:4px 12px;border-radius:999px}
-  #birthdayPanel,#votePanel,#threadPanel,#themePanel{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(36,54,43,.05)}
+  #birthdayPanel,#votePanel,#threadPanel,#themePanel,#namePanel{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(36,54,43,.05)}
+  #namePanel select{width:100%;height:48px;padding:0 12px;border:1px solid #d9ded8;border-radius:12px;font:inherit;background:#fff}
+  #namePanel input[type=password]{margin-top:2px}
+  #namePanel .hint{font-size:12px;color:var(--muted);line-height:1.7;margin:6px 0 0}
+  #namePanel .skip{margin:12px 0 0;text-align:center}
+  #namePanel .skip a{color:var(--green-dark);font-size:13.5px;font-weight:700;text-decoration:none}
+  #namePanel .greet{font-size:16.5px;font-weight:800;margin:0 0 4px}
+  #namePanel .done-note{font-size:12.5px;color:var(--muted);margin:0 0 10px;line-height:1.7}
+  #namePanel .del-zone{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+  #namePanel .del-zone .row{display:flex;gap:8px;margin-top:8px}
+  #namePanel .del-zone .row button{flex:1}
   #themePanel{background:#FFF7E6}
 </style>
 </head>
@@ -132,6 +142,37 @@
   </section>
 
 
+
+  <!-- お名前の登録（任意・解錠後に表示） -->
+  <section id="namePanel" hidden style="margin-bottom:8px;padding:14px 16px">
+    <div id="nameRegForm">
+      <h2 style="margin:0 0 6px;font-size:16.5px">👋 お名前の登録（任意）</h2>
+      <p class="desc" style="margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.7">お名前を覚えると、次から名前でお迎えします。別の端末から入るときも、名前と合言葉で同じ人だと分かります。</p>
+      <label for="nameSelect">お名前（オプチャの名前）</label>
+      <select id="nameSelect"><option value="">タップして選んでください</option></select>
+      <label for="namePass" style="margin-top:14px">合言葉（自分だけの言葉・4文字以上）</label>
+      <input type="password" id="namePass" autocomplete="new-password" placeholder="好きな言葉を決めてください">
+      <p class="hint">別の端末から入るときに、同じ人だと分かるためのものです。いつも使うパスワードとは違う言葉にしてください。合言葉は暗号化して保管し、元の言葉は保存しません。</p>
+      <button class="primary" id="nameRegBtn" type="button">覚えてもらう</button>
+      <div class="error" id="nameError" role="alert"></div>
+      <p class="skip"><a href="#" id="nameSkip">今は入れない</a></p>
+    </div>
+    <div id="nameRegDone" hidden>
+      <p class="greet" id="greetText"></p>
+      <p class="done-note" id="nameDoneNote">この端末では、次からこの名前でお迎えします。</p>
+      <button class="logout" id="nameDelOpen" type="button">名前の登録を消す</button>
+      <div class="del-zone" id="nameDelForm" hidden>
+        <label for="nameDelPass">合言葉を入力してください</label>
+        <input type="password" id="nameDelPass" autocomplete="off">
+        <div class="row">
+          <button class="logout" id="nameDelCancel" type="button">やめる</button>
+          <button class="logout" id="nameDelBtn" type="button" style="color:#b33;border-color:#b33">消す</button>
+        </div>
+        <div class="error" id="nameDelError" role="alert"></div>
+        <p class="hint">合言葉を忘れてしまったときは、管理人（あんちゃん）に連絡してください。</p>
+      </div>
+    </div>
+  </section>
 
   <!-- メニュー -->
   <section id="menuPanel" hidden>
@@ -220,6 +261,7 @@
     <div class="status">
       <div id="visitLine" hidden></div>
       <div id="remainText"></div>
+      <button class="logout" id="nameOpenBtn" type="button" hidden>名前を登録する</button>
       <button class="logout" id="logoutBtn" type="button">ログアウト（この端末の保存を消す）</button>
     </div>
   </section>
@@ -297,6 +339,8 @@
   }
   function showLogin(){
     menuPanel.hidden = true;
+    document.getElementById("namePanel").hidden = true;
+    document.getElementById("nameOpenBtn").hidden = true;
     document.getElementById("birthdayPanel").hidden = true;
     document.getElementById("votePanel").hidden = true;
     document.getElementById("threadPanel").hidden = true;
@@ -365,8 +409,9 @@
         var sub = h.add === 0
           ? '<div class="bday-sub today">今日が誕生日です！🎉</div>'
           : '<div class="bday-sub">あと' + h.add + '日・' + h.month + '月' + h.day + '日（' + wdNames[h.wd] + '）</div>';
+        var mine = getMyName() === h.name ? ' ⭐' : '';
         return '<div class="bday-row"><div class="bday-cal"><div class="m">' + h.month + '月</div><div class="d">' + h.day + '</div></div>'
-          + '<div><div class="bday-name">' + escapeHtml(h.name) + ' さん</div>' + sub + '</div></div>';
+          + '<div><div class="bday-name">' + escapeHtml(h.name) + ' さん' + mine + '</div>' + sub + '</div></div>';
       }).join("");
       document.getElementById("birthdayBody").innerHTML = html;
       document.getElementById("birthdayPanel").hidden = false;
@@ -377,7 +422,7 @@
   }
 
   function loadBirthdays(pw){
-    decryptPages(pw).then(renderBirthdays).catch(function(e){
+    decryptPages(pw).then(function(pages){ renderBirthdays(pages); setupNameUI(pages); }).catch(function(e){
       if (e && e.name === "OperationError") { try { localStorage.removeItem(KEY); } catch (x) {} showLogin(); }
     });
   }
@@ -542,13 +587,158 @@
       }
       writeStore(pw);
       showMenu(readStore());
-      if (pages) renderBirthdays(pages); else loadBirthdays(pw);
+      if (pages) { renderBirthdays(pages); setupNameUI(pages); } else loadBirthdays(pw);
       loadVotes(); loadThreads(); loadVisits(); loadTheme();
     } catch (ex) {
       err.textContent = "パスワードが違います。もう一度入力してください。";
       document.getElementById("pw").select();
     } finally {
       btn.disabled = false; btn.textContent = "ポータルを開く";
+    }
+  });
+
+  // ===== お名前の登録（任意） =====
+  // 名前は端末の中だけに期限なしで保存する（共通パスワードの30日保存とは別）。
+  // 合言葉はハッシュ化してサーバーで照合するので、別の端末でも同じ人だと分かる。
+  var NAME_KEY = "onestep.portal.name.v1";
+  var NAME_SKIP_KEY = "onestep.portal.nameSkip";
+  var nameListCache = [];
+  function getMyName(){
+    try { var j = JSON.parse(localStorage.getItem(NAME_KEY) || "null"); return (j && j.name) ? j.name : null; }
+    catch (e) { return null; }
+  }
+  function setMyName(n){ try { localStorage.setItem(NAME_KEY, JSON.stringify({ name: n })); } catch (e) {} }
+  function clearMyName(){ try { localStorage.removeItem(NAME_KEY); } catch (e) {} }
+  function nameSkipped(){ try { return localStorage.getItem(NAME_SKIP_KEY) === "1"; } catch (e) { return false; } }
+  function setNameSkipped(v){ try { if (v) localStorage.setItem(NAME_SKIP_KEY, "1"); else localStorage.removeItem(NAME_SKIP_KEY); } catch (e) {} }
+  function parseNames(contents){
+    var out = [], seen = {};
+    var re = /<strong>名前：<\/strong>([^<]+)/g, m;
+    while ((m = re.exec(String(contents || ""))) !== null) {
+      var n = m[1].trim();
+      if (n && !seen[n]) { seen[n] = 1; out.push(n); }
+    }
+    return out;
+  }
+  async function callNameRpc(fn, body){
+    var r = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + fn, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error("name rpc failed");
+    return r.json();
+  }
+  function nameHash(name, pass){ return sha256hex("onestep-name-v1:" + name + ":" + pass); }
+  function showNameDone(note){
+    var my = getMyName();
+    if (!my) return;
+    document.getElementById("greetText").textContent = my + "さん、おかえりなさい";
+    if (note) document.getElementById("nameDoneNote").textContent = note;
+    document.getElementById("nameRegForm").hidden = true;
+    document.getElementById("nameRegDone").hidden = false;
+    document.getElementById("nameDelForm").hidden = true;
+    document.getElementById("namePanel").hidden = false;
+    document.getElementById("nameOpenBtn").hidden = true;
+  }
+  function showNameForm(){
+    document.getElementById("nameRegDone").hidden = true;
+    document.getElementById("nameRegForm").hidden = false;
+    document.getElementById("namePanel").hidden = false;
+    document.getElementById("nameOpenBtn").hidden = true;
+  }
+  function setupNameUI(pages){
+    if (pages && pages.contents) {
+      var names = parseNames(pages.contents);
+      if (names.length) {
+        nameListCache = names;
+        var sel = document.getElementById("nameSelect");
+        sel.innerHTML = '<option value="">タップして選んでください</option>' + names.map(function(n){
+          return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>';
+        }).join("");
+      }
+    }
+    if (getMyName()) { showNameDone(); return; }
+    if (nameSkipped()) {
+      document.getElementById("namePanel").hidden = true;
+      document.getElementById("nameOpenBtn").hidden = false;
+      return;
+    }
+    if (nameListCache.length) showNameForm();
+  }
+  document.getElementById("nameRegBtn").addEventListener("click", async function(){
+    var btn = this;
+    var err = document.getElementById("nameError");
+    var name = document.getElementById("nameSelect").value;
+    var pass = document.getElementById("namePass").value;
+    err.textContent = "";
+    if (!name) { err.textContent = "お名前を選んでください。"; return; }
+    if (!pass || pass.length < 4) { err.textContent = "合言葉は4文字以上にしてください。"; return; }
+    btn.disabled = true; btn.textContent = "確認中…";
+    try {
+      var h = await nameHash(name, pass);
+      var res = await callNameRpc("portal_name_register", { p_name: name, p_hash: h });
+      if (res && res.ok) {
+        setMyName(name);
+        setNameSkipped(false);
+        document.getElementById("namePass").value = "";
+        showNameDone(res.mode === "verified"
+          ? "同じ方だと確認できました。この端末でも、次からこの名前でお迎えします。"
+          : "登録しました。この端末では、次からこの名前でお迎えします。");
+      } else if (res && res.error === "mismatch") {
+        err.textContent = "その名前はすでに登録されていて、合言葉が合いませんでした。本人の方は合言葉を確認してください。本人でない場合は、別の名前を選んでください。";
+      } else {
+        err.textContent = "登録できませんでした。通信環境を確認して、もう一度お試しください。";
+      }
+    } catch (e) {
+      err.textContent = "登録できませんでした。通信環境を確認して、もう一度お試しください。";
+    } finally {
+      btn.disabled = false; btn.textContent = "覚えてもらう";
+    }
+  });
+  document.getElementById("nameSkip").addEventListener("click", function(e){
+    e.preventDefault();
+    setNameSkipped(true);
+    document.getElementById("namePanel").hidden = true;
+    document.getElementById("nameOpenBtn").hidden = false;
+  });
+  document.getElementById("nameOpenBtn").addEventListener("click", function(){
+    setNameSkipped(false);
+    if (nameListCache.length) { showNameForm(); return; }
+    var s = readStore();
+    if (s) decryptPages(s.pw).then(function(pages){ setupNameUI(pages); }).catch(function(){});
+  });
+  document.getElementById("nameDelOpen").addEventListener("click", function(){
+    document.getElementById("nameDelForm").hidden = false;
+    document.getElementById("nameDelError").textContent = "";
+    document.getElementById("nameDelPass").value = "";
+  });
+  document.getElementById("nameDelCancel").addEventListener("click", function(){
+    document.getElementById("nameDelForm").hidden = true;
+  });
+  document.getElementById("nameDelBtn").addEventListener("click", async function(){
+    var btn = this;
+    var err = document.getElementById("nameDelError");
+    var my = getMyName();
+    var pass = document.getElementById("nameDelPass").value;
+    err.textContent = "";
+    if (!my) return;
+    if (!pass) { err.textContent = "合言葉を入力してください。"; return; }
+    btn.disabled = true; btn.textContent = "確認中…";
+    try {
+      var h = await nameHash(my, pass);
+      var res = await callNameRpc("portal_name_delete", { p_name: my, p_hash: h });
+      if (res && res.ok) {
+        clearMyName();
+        document.getElementById("nameDelPass").value = "";
+        if (nameListCache.length) showNameForm(); else { document.getElementById("namePanel").hidden = true; document.getElementById("nameOpenBtn").hidden = false; }
+      } else {
+        err.textContent = "合言葉が合いませんでした。忘れてしまったときは、管理人（あんちゃん）に連絡してください。";
+      }
+    } catch (e) {
+      err.textContent = "消せませんでした。通信環境を確認して、もう一度お試しください。";
+    } finally {
+      btn.disabled = false; btn.textContent = "消す";
     }
   });
 
