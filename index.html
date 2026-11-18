@@ -153,13 +153,14 @@
   <section id="namePanel" hidden style="margin-bottom:8px;padding:14px 16px">
     <div id="nameRegForm">
       <h2 style="margin:0 0 6px;font-size:16.5px">👋 お名前の登録</h2>
-      <p class="desc" style="margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.7">ポータルを使うには、最初に1回だけお名前の登録をお願いします。お名前を覚えると、次から名前でお迎えします。別の端末から入るときにも同じ合言葉をご利用ください。</p>
+      <p class="desc" style="margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.7">お名前を登録すると、名前でお迎えしたり、自分の自己紹介を合言葉で編集したり、アニメ投票ができるようになります。登録しなくても、ポータルの閲覧はそのままできます。別の端末から入るときにも同じ合言葉をご利用ください。</p>
       <label for="nameSelect">お名前（オプチャの名前）</label>
       <select id="nameSelect"><option value="">タップして選んでください</option></select>
       <label for="namePass" style="margin-top:14px">合言葉（自分だけの言葉・4文字以上）</label>
       <input type="password" id="namePass" autocomplete="new-password" placeholder="好きな言葉を決めてください">
       <button class="primary" id="nameRegBtn" type="button">覚えてもらう</button>
       <div class="error" id="nameError" role="alert"></div>
+      <a href="#" id="nameClose" style="display:inline-block;margin-top:10px;font-size:13px;color:var(--muted)">今はしない（閉じる）</a>
     </div>
   </section>
 
@@ -324,8 +325,8 @@
   }
   function showMenu(j){
     loginPanel.hidden = true;
-    // お名前の登録が必須: 登録済みの端末だけ中身を表示する
-    menuPanel.hidden = !getMyName();
+    // 閲覧だけなら名前の登録なしでも中身を表示する
+    menuPanel.hidden = false;
     var left = Math.max(0, Math.ceil((j.exp - Date.now()) / (24 * 60 * 60 * 1000)));
     remainText.textContent = "ログイン中（この端末ではあと約" + left + "日間、パスワード入力なしで開けます）";
   }
@@ -408,7 +409,7 @@
           + '<div><div class="bday-name">' + escapeHtml(h.name) + ' さん' + mine + '</div>' + sub + '</div></div>';
       }).join("");
       document.getElementById("birthdayBody").innerHTML = html;
-      document.getElementById("birthdayPanel").hidden = !getMyName();
+      document.getElementById("birthdayPanel").hidden = false;
     } catch (e) {}
   }
   function escapeHtml(s){
@@ -656,7 +657,10 @@
     document.getElementById("namePanel").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = false;
-    // 「?m=番号」から来た人は、解錠と登録が済んだらその人の自己紹介へ案内する
+    maybeRedirectM();
+  }
+  // 「?m=番号」から来た人は、解錠できたら（登録はしなくても）その人の自己紹介へ案内する
+  function maybeRedirectM(){
     var pm = takePendingM();
     if (pm) {
       setTimeout(function(){
@@ -684,13 +688,13 @@
       }
     }
     if (getMyName()) { showRegisteredUI(); return; }
-    // 未登録の端末は登録するまで中身を表示しない（登録必須）
+    // 未登録でも閲覧はできる。登録は任意で、ボタンからいつでも開ける
     document.getElementById("myEditBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = true;
-    document.getElementById("nameOpenBtn").hidden = true;
-    document.getElementById("birthdayPanel").hidden = true;
-    menuPanel.hidden = true;
-    if (nameListCache.length) showNameForm();
+    document.getElementById("namePanel").hidden = true;
+    document.getElementById("nameOpenBtn").hidden = false;
+    menuPanel.hidden = false;
+    maybeRedirectM();
   }
   document.getElementById("nameRegBtn").addEventListener("click", async function(){
     var btn = this;
@@ -726,18 +730,22 @@
     var s = readStore();
     if (s) decryptPages(s.pw).then(function(pages){ setupNameUI(pages); }).catch(function(){});
   });
+  document.getElementById("nameClose").addEventListener("click", function(e){
+    e.preventDefault();
+    document.getElementById("namePanel").hidden = true;
+    document.getElementById("nameOpenBtn").hidden = false;
+  });
   document.getElementById("nameDelOpen").addEventListener("click", function(){
     // 合言葉なしで、この端末からだけ名前を外す（サーバーの登録は残るので、名前は他人に取られない）
-    if (!confirm("この端末から名前を外しますか？\n登録自体は残ります。次にポータルを開くときは、名前と合言葉での確認が必要になります。")) return;
+    if (!confirm("この端末から名前を外しますか？\n登録自体は残ります。ポータルの閲覧はそのままできますが、自分の紹介の編集やアニメ投票には、名前と合言葉での確認がまた必要になります。")) return;
     clearMyName();
     document.getElementById("myEditBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = true;
-    document.getElementById("nameOpenBtn").hidden = true;
-    document.getElementById("birthdayPanel").hidden = true;
-    menuPanel.hidden = true;
-    if (nameListCache.length) { showNameForm(); return; }
+    document.getElementById("namePanel").hidden = true;
+    document.getElementById("nameOpenBtn").hidden = false;
+    menuPanel.hidden = false;
     var s = readStore();
-    if (s) decryptPages(s.pw).then(function(pages){ setupNameUI(pages); }).catch(function(){});
+    if (s) decryptPages(s.pw).then(function(pages){ renderBirthdays(pages); }).catch(function(){});
   });
 
   document.getElementById("logoutBtn").addEventListener("click", function(){
