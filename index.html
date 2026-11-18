@@ -162,14 +162,6 @@
       <div class="error" id="nameError" role="alert"></div>
       <p class="skip"><a href="#" id="nameSkip">今は入れない</a></p>
     </div>
-    <div id="nameDelZone" hidden>
-      <h2 style="margin:0 0 10px;font-size:16.5px">名前の登録を消す</h2>
-      <label for="nameDelPass">合言葉を入力してください</label>
-      <input type="password" id="nameDelPass" autocomplete="off">
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="logout" id="nameDelCancel" type="button" style="flex:1;margin-top:0">やめる</button>
-        <button class="logout" id="nameDelBtn" type="button" style="flex:1;margin-top:0;color:#b33;border-color:#b33">消す</button>
-      </div>
       <div class="error" id="nameDelError" role="alert"></div>
       <p class="hint">合言葉を忘れてしまったときは、管理人（あんちゃん）に連絡してください。</p>
     </div>
@@ -263,7 +255,7 @@
       <div id="visitLine" hidden></div>
       <div id="remainText"></div>
       <div class="btn-row">
-        <button class="logout" id="nameDelOpen" type="button" hidden>名前の登録を消す</button>
+        <button class="logout" id="nameDelOpen" type="button" hidden>この端末から名前を外す</button>
         <button class="logout" id="logoutBtn" type="button">ログアウト（この端末の保存を消す）</button>
       </div>
     </div>
@@ -643,12 +635,10 @@
   function showRegisteredUI(){
     // 登録済みのときはパネル自体を出さず、ステータス欄に「名前の登録を消す」だけ出す
     document.getElementById("namePanel").hidden = true;
-    document.getElementById("nameDelZone").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = false;
   }
   function showNameForm(){
-    document.getElementById("nameDelZone").hidden = true;
     document.getElementById("nameRegForm").hidden = false;
     document.getElementById("namePanel").hidden = false;
     document.getElementById("nameOpenBtn").hidden = true;
@@ -717,41 +707,14 @@
     if (s) decryptPages(s.pw).then(function(pages){ setupNameUI(pages); }).catch(function(){});
   });
   document.getElementById("nameDelOpen").addEventListener("click", function(){
-    document.getElementById("nameRegForm").hidden = true;
-    document.getElementById("nameDelZone").hidden = false;
-    document.getElementById("namePanel").hidden = false;
-    document.getElementById("nameDelError").textContent = "";
-    document.getElementById("nameDelPass").value = "";
-  });
-  document.getElementById("nameDelCancel").addEventListener("click", function(){
-    document.getElementById("nameDelZone").hidden = true;
-    document.getElementById("namePanel").hidden = true;
-  });
-  document.getElementById("nameDelBtn").addEventListener("click", async function(){
-    var btn = this;
-    var err = document.getElementById("nameDelError");
-    var my = getMyName();
-    var pass = document.getElementById("nameDelPass").value;
-    err.textContent = "";
-    if (!my) return;
-    if (!pass) { err.textContent = "合言葉を入力してください。"; return; }
-    btn.disabled = true; btn.textContent = "確認中…";
-    try {
-      var h = await nameHash(my, pass);
-      var res = await callNameRpc("portal_name_delete", { p_name: my, p_hash: h });
-      if (res && res.ok) {
-        clearMyName();
-        document.getElementById("nameDelPass").value = "";
-        document.getElementById("nameDelOpen").hidden = true;
-        if (nameListCache.length) showNameForm(); else { document.getElementById("namePanel").hidden = true; document.getElementById("nameOpenBtn").hidden = false; }
-      } else {
-        err.textContent = "合言葉が合いませんでした。忘れてしまったときは、管理人（あんちゃん）に連絡してください。";
-      }
-    } catch (e) {
-      err.textContent = "消せませんでした。通信環境を確認して、もう一度お試しください。";
-    } finally {
-      btn.disabled = false; btn.textContent = "消す";
-    }
+    // 合言葉なしで、この端末からだけ名前を外す（サーバーの登録は残るので、名前は他人に取られない）
+    if (!confirm("この端末から名前を外しますか？\n登録自体は残ります。また使いたいときは、名前と合言葉で戻れます。")) return;
+    clearMyName();
+    setNameSkipped(true);
+    document.getElementById("nameDelOpen").hidden = true;
+    document.getElementById("nameOpenBtn").hidden = false;
+    var s = readStore();
+    if (s) decryptPages(s.pw).then(function(pages){ renderBirthdays(pages); }).catch(function(){});
   });
 
   document.getElementById("logoutBtn").addEventListener("click", function(){
