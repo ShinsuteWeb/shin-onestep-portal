@@ -152,8 +152,8 @@
   <!-- お名前の登録（任意・解錠後に表示） -->
   <section id="namePanel" hidden style="margin-bottom:8px;padding:14px 16px">
     <div id="nameRegForm">
-      <h2 style="margin:0 0 6px;font-size:16.5px">👋 お名前の登録（任意）</h2>
-      <p class="desc" style="margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.7">お名前を覚えると、次から名前でお迎えします。別の端末から入るときも、名前と合言葉で同じ人だと分かります。</p>
+      <h2 style="margin:0 0 6px;font-size:16.5px">👋 お名前の登録</h2>
+      <p class="desc" style="margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.7">ポータルを使うには、最初に1回だけお名前の登録をお願いします。お名前を覚えると、次から名前でお迎えします。別の端末から入るときも、名前と合言葉で同じ人だと分かります。</p>
       <label for="nameSelect">お名前（オプチャの名前）</label>
       <select id="nameSelect"><option value="">タップして選んでください</option></select>
       <label for="namePass" style="margin-top:14px">合言葉（自分だけの言葉・4文字以上）</label>
@@ -161,7 +161,6 @@
       <p class="hint">別の端末から入るときに、同じ人だと分かるためのものです。いつも使うパスワードとは違う言葉にしてください。合言葉は暗号化して保管し、元の言葉は保存しません。</p>
       <button class="primary" id="nameRegBtn" type="button">覚えてもらう</button>
       <div class="error" id="nameError" role="alert"></div>
-      <p class="skip"><a href="#" id="nameSkip">今は入れない</a></p>
     </div>
   </section>
 
@@ -326,7 +325,8 @@
   }
   function showMenu(j){
     loginPanel.hidden = true;
-    menuPanel.hidden = false;
+    // お名前の登録が必須: 登録済みの端末だけ中身を表示する
+    menuPanel.hidden = !getMyName();
     var left = Math.max(0, Math.ceil((j.exp - Date.now()) / (24 * 60 * 60 * 1000)));
     remainText.textContent = "ログイン中（この端末ではあと約" + left + "日間、パスワード入力なしで開けます）";
   }
@@ -409,7 +409,7 @@
           + '<div><div class="bday-name">' + escapeHtml(h.name) + ' さん' + mine + '</div>' + sub + '</div></div>';
       }).join("");
       document.getElementById("birthdayBody").innerHTML = html;
-      document.getElementById("birthdayPanel").hidden = false;
+      document.getElementById("birthdayPanel").hidden = !getMyName();
     } catch (e) {}
   }
   function escapeHtml(s){
@@ -636,6 +636,9 @@
     var myName = getMyName();
     document.getElementById("myEditGreet").textContent = myName ? (myName + "さん、おかえりなさい！") : "";
     document.getElementById("myEditBtn").hidden = false;
+    menuPanel.hidden = false;
+    var s = readStore();
+    if (s) decryptPages(s.pw).then(function(pages){ renderBirthdays(pages); }).catch(function(){});
     document.getElementById("namePanel").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = false;
@@ -660,13 +663,12 @@
       }
     }
     if (getMyName()) { showRegisteredUI(); return; }
-    if (nameSkipped()) {
-      document.getElementById("myEditBtn").hidden = true;
-      document.getElementById("namePanel").hidden = true;
-      document.getElementById("nameDelOpen").hidden = true;
-      document.getElementById("nameOpenBtn").hidden = false;
-      return;
-    }
+    // 未登録の端末は登録するまで中身を表示しない（登録必須）
+    document.getElementById("myEditBtn").hidden = true;
+    document.getElementById("nameDelOpen").hidden = true;
+    document.getElementById("nameOpenBtn").hidden = true;
+    document.getElementById("birthdayPanel").hidden = true;
+    menuPanel.hidden = true;
     if (nameListCache.length) showNameForm();
   }
   document.getElementById("nameRegBtn").addEventListener("click", async function(){
@@ -687,7 +689,7 @@
         document.getElementById("namePass").value = "";
         showRegisteredUI();
       } else if (res && res.error === "mismatch") {
-        err.textContent = "その名前はすでに登録されていて、合言葉が合いませんでした。本人の方は合言葉を確認してください。本人でない場合は、別の名前を選んでください。";
+        err.textContent = "その名前はすでに登録されていて、合言葉が合いませんでした。本人の方は合言葉を確認してください。心当たりがない場合は、管理人にご相談ください。";
       } else {
         err.textContent = "登録できませんでした。通信環境を確認して、もう一度お試しください。";
       }
@@ -697,13 +699,6 @@
       btn.disabled = false; btn.textContent = "覚えてもらう";
     }
   });
-  document.getElementById("nameSkip").addEventListener("click", function(e){
-    e.preventDefault();
-    setNameSkipped(true);
-    document.getElementById("namePanel").hidden = true;
-    document.getElementById("nameDelOpen").hidden = true;
-    document.getElementById("nameOpenBtn").hidden = false;
-  });
   document.getElementById("nameOpenBtn").addEventListener("click", function(){
     setNameSkipped(false);
     if (nameListCache.length) { showNameForm(); return; }
@@ -712,14 +707,16 @@
   });
   document.getElementById("nameDelOpen").addEventListener("click", function(){
     // 合言葉なしで、この端末からだけ名前を外す（サーバーの登録は残るので、名前は他人に取られない）
-    if (!confirm("この端末から名前を外しますか？\n登録自体は残ります。また使いたいときは、名前と合言葉で戻れます。")) return;
+    if (!confirm("この端末から名前を外しますか？\n登録自体は残ります。次にポータルを開くときは、名前と合言葉での確認が必要になります。")) return;
     clearMyName();
     document.getElementById("myEditBtn").hidden = true;
-    setNameSkipped(true);
     document.getElementById("nameDelOpen").hidden = true;
-    document.getElementById("nameOpenBtn").hidden = false;
+    document.getElementById("nameOpenBtn").hidden = true;
+    document.getElementById("birthdayPanel").hidden = true;
+    menuPanel.hidden = true;
+    if (nameListCache.length) { showNameForm(); return; }
     var s = readStore();
-    if (s) decryptPages(s.pw).then(function(pages){ renderBirthdays(pages); }).catch(function(){});
+    if (s) decryptPages(s.pw).then(function(pages){ setupNameUI(pages); }).catch(function(){});
   });
 
   document.getElementById("logoutBtn").addEventListener("click", function(){
