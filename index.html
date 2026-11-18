@@ -596,6 +596,21 @@
   // 合言葉はハッシュ化してサーバーで照合するので、別の端末でも同じ人だと分かる。
   var NAME_KEY = "onestep.portal.name.v1";
   var NAME_SKIP_KEY = "onestep.portal.nameSkip";
+  var PENDING_M_KEY = "onestep.portal.pendingM";
+  // メインルームの投稿などから「?m=番号」で来たときは、行き先（その人の自己紹介）を覚えておく
+  (function(){
+    try {
+      var m = new URLSearchParams(location.search).get("m");
+      if (m && /^\d+$/.test(m)) {
+        sessionStorage.setItem(PENDING_M_KEY, m);
+        history.replaceState(null, "", location.pathname);
+      }
+    } catch (e) {}
+  })();
+  function takePendingM(){
+    try { var m = sessionStorage.getItem(PENDING_M_KEY); if (m) sessionStorage.removeItem(PENDING_M_KEY); return m; }
+    catch (e) { return null; }
+  }
   var nameListCache = [];
   function getMyName(){
     try { var j = JSON.parse(localStorage.getItem(NAME_KEY) || "null"); return (j && j.name) ? j.name : null; }
@@ -641,6 +656,13 @@
     document.getElementById("namePanel").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = false;
+    // 「?m=番号」から来た人は、解錠と登録が済んだらその人の自己紹介へ案内する
+    var pm = takePendingM();
+    if (pm) {
+      setTimeout(function(){
+        location.href = "https://shinsuteweb.github.io/shin-onestep-profile2/?m=" + pm;
+      }, 800);
+    }
   }
   function showNameForm(){
     document.getElementById("myEditBtn").hidden = true;
