@@ -104,6 +104,8 @@
   .status{background:rgba(255,255,255,.82);border-radius:14px;padding:10px 16px}
   .foot-pill{background:rgba(255,255,255,.82);padding:4px 12px;border-radius:999px}
   #birthdayPanel,#votePanel,#threadPanel,#themePanel,#namePanel{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(36,54,43,.05)}
+  .btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .btn-row .logout{padding:8px 10px;font-size:11.5px;white-space:nowrap}
   #namePanel select{width:100%;height:48px;padding:0 12px;border:1px solid #d9ded8;border-radius:12px;font:inherit;background:#fff}
   #namePanel input[type=password]{margin-top:2px}
   #namePanel .hint{font-size:12px;color:var(--muted);line-height:1.7;margin:6px 0 0}
@@ -160,20 +162,16 @@
       <div class="error" id="nameError" role="alert"></div>
       <p class="skip"><a href="#" id="nameSkip">今は入れない</a></p>
     </div>
-    <div id="nameRegDone" hidden>
-      <p class="greet" id="greetText"></p>
-      <p class="done-note" id="nameDoneNote">この端末では、次からこの名前でお迎えします。</p>
-      <button class="logout" id="nameDelOpen" type="button">名前の登録を消す</button>
-      <div class="del-zone" id="nameDelForm" hidden>
-        <label for="nameDelPass">合言葉を入力してください</label>
-        <input type="password" id="nameDelPass" autocomplete="off">
-        <div class="row">
-          <button class="logout" id="nameDelCancel" type="button">やめる</button>
-          <button class="logout" id="nameDelBtn" type="button" style="color:#b33;border-color:#b33">消す</button>
-        </div>
-        <div class="error" id="nameDelError" role="alert"></div>
-        <p class="hint">合言葉を忘れてしまったときは、管理人（あんちゃん）に連絡してください。</p>
+    <div id="nameDelZone" hidden>
+      <h2 style="margin:0 0 10px;font-size:16.5px">名前の登録を消す</h2>
+      <label for="nameDelPass">合言葉を入力してください</label>
+      <input type="password" id="nameDelPass" autocomplete="off">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="logout" id="nameDelCancel" type="button" style="flex:1;margin-top:0">やめる</button>
+        <button class="logout" id="nameDelBtn" type="button" style="flex:1;margin-top:0;color:#b33;border-color:#b33">消す</button>
       </div>
+      <div class="error" id="nameDelError" role="alert"></div>
+      <p class="hint">合言葉を忘れてしまったときは、管理人（あんちゃん）に連絡してください。</p>
     </div>
   </section>
 
@@ -264,7 +262,10 @@
     <div class="status">
       <div id="visitLine" hidden></div>
       <div id="remainText"></div>
-      <button class="logout" id="logoutBtn" type="button">ログアウト（この端末の保存を消す）</button>
+      <div class="btn-row">
+        <button class="logout" id="nameDelOpen" type="button" hidden>名前の登録を消す</button>
+        <button class="logout" id="logoutBtn" type="button">ログアウト（この端末の保存を消す）</button>
+      </div>
     </div>
   </section>
 </main>
@@ -343,6 +344,7 @@
     menuPanel.hidden = true;
     document.getElementById("namePanel").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
+    document.getElementById("nameDelOpen").hidden = true;
     document.getElementById("birthdayPanel").hidden = true;
     document.getElementById("votePanel").hidden = true;
     document.getElementById("threadPanel").hidden = true;
@@ -638,22 +640,19 @@
     return r.json();
   }
   function nameHash(name, pass){ return sha256hex("onestep-name-v1:" + name + ":" + pass); }
-  function showNameDone(note){
-    var my = getMyName();
-    if (!my) return;
-    document.getElementById("greetText").textContent = my + "さん、おかえりなさい";
-    if (note) document.getElementById("nameDoneNote").textContent = note;
-    document.getElementById("nameRegForm").hidden = true;
-    document.getElementById("nameRegDone").hidden = false;
-    document.getElementById("nameDelForm").hidden = true;
-    document.getElementById("namePanel").hidden = false;
+  function showRegisteredUI(){
+    // 登録済みのときはパネル自体を出さず、ステータス欄に「名前の登録を消す」だけ出す
+    document.getElementById("namePanel").hidden = true;
+    document.getElementById("nameDelZone").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
+    document.getElementById("nameDelOpen").hidden = false;
   }
   function showNameForm(){
-    document.getElementById("nameRegDone").hidden = true;
+    document.getElementById("nameDelZone").hidden = true;
     document.getElementById("nameRegForm").hidden = false;
     document.getElementById("namePanel").hidden = false;
     document.getElementById("nameOpenBtn").hidden = true;
+    document.getElementById("nameDelOpen").hidden = true;
   }
   function setupNameUI(pages){
     if (pages && pages.contents) {
@@ -667,9 +666,10 @@
         }).join("");
       }
     }
-    if (getMyName()) { showNameDone(); return; }
+    if (getMyName()) { showRegisteredUI(); return; }
     if (nameSkipped()) {
       document.getElementById("namePanel").hidden = true;
+      document.getElementById("nameDelOpen").hidden = true;
       document.getElementById("nameOpenBtn").hidden = false;
       return;
     }
@@ -691,9 +691,7 @@
         setMyName(name);
         setNameSkipped(false);
         document.getElementById("namePass").value = "";
-        showNameDone(res.mode === "verified"
-          ? "同じ方だと確認できました。この端末でも、次からこの名前でお迎えします。"
-          : "登録しました。この端末では、次からこの名前でお迎えします。");
+        showRegisteredUI();
       } else if (res && res.error === "mismatch") {
         err.textContent = "その名前はすでに登録されていて、合言葉が合いませんでした。本人の方は合言葉を確認してください。本人でない場合は、別の名前を選んでください。";
       } else {
@@ -709,6 +707,7 @@
     e.preventDefault();
     setNameSkipped(true);
     document.getElementById("namePanel").hidden = true;
+    document.getElementById("nameDelOpen").hidden = true;
     document.getElementById("nameOpenBtn").hidden = false;
   });
   document.getElementById("nameOpenBtn").addEventListener("click", function(){
@@ -718,12 +717,15 @@
     if (s) decryptPages(s.pw).then(function(pages){ setupNameUI(pages); }).catch(function(){});
   });
   document.getElementById("nameDelOpen").addEventListener("click", function(){
-    document.getElementById("nameDelForm").hidden = false;
+    document.getElementById("nameRegForm").hidden = true;
+    document.getElementById("nameDelZone").hidden = false;
+    document.getElementById("namePanel").hidden = false;
     document.getElementById("nameDelError").textContent = "";
     document.getElementById("nameDelPass").value = "";
   });
   document.getElementById("nameDelCancel").addEventListener("click", function(){
-    document.getElementById("nameDelForm").hidden = true;
+    document.getElementById("nameDelZone").hidden = true;
+    document.getElementById("namePanel").hidden = true;
   });
   document.getElementById("nameDelBtn").addEventListener("click", async function(){
     var btn = this;
@@ -740,6 +742,7 @@
       if (res && res.ok) {
         clearMyName();
         document.getElementById("nameDelPass").value = "";
+        document.getElementById("nameDelOpen").hidden = true;
         if (nameListCache.length) showNameForm(); else { document.getElementById("namePanel").hidden = true; document.getElementById("nameOpenBtn").hidden = false; }
       } else {
         err.textContent = "合言葉が合いませんでした。忘れてしまったときは、管理人（あんちゃん）に連絡してください。";
