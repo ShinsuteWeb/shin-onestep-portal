@@ -117,8 +117,6 @@
   #namePanel .del-zone .row{display:flex;gap:8px;margin-top:8px}
   #namePanel .del-zone .row button{flex:1}
   #themePanel{background:#FFF7E6}
-  #nameOpenNote{margin:0 0 10px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.62);color:#33506b;font-size:12.5px;text-align:center}
-  #nameOpenBtn[hidden] + #nameOpenNote{display:none}
 </style>
 </head>
 <body>
@@ -140,8 +138,7 @@
 
 
   <!-- 名前を登録する（スキップした人向け・上部に表示） -->
-  <button id="nameOpenBtn" type="button" hidden style="width:100%;margin-bottom:8px;padding:12px;border:0;border-radius:12px;background:var(--green);color:#fff;font:inherit;font-weight:700;cursor:pointer">👋 名前を登録する（任意）</button>
-  <p id="nameOpenNote">登録すると自己紹介の編集やアニメ投票ができます</p>
+  <button id="nameOpenBtn" type="button" hidden style="width:100%;margin-bottom:8px;padding:12px;border:0;border-radius:12px;background:var(--green);color:#fff;font:inherit;cursor:pointer"><span style="display:block;font-weight:700">👋 名前を登録する（任意）</span><span style="display:block;font-size:12.5px;opacity:.92;margin-top:3px">登録すると自己紹介の編集やアニメ投票ができます</span></button>
   <a id="myEditBtn" href="https://shinsuteweb.github.io/shin-onestep-profile2/?edit=self" hidden style="display:block;width:100%;box-sizing:border-box;text-align:center;margin-bottom:12px;padding:12px;border-radius:12px;background:#315c84;color:#fff;text-decoration:none"><span id="myEditGreet" style="display:block;font-weight:700;font-size:15px"></span><span style="display:block;font-size:12.5px;opacity:.92;margin-top:3px">✏️ 自分の自己紹介を編集する</span></a>
 
   <!-- お誕生日（解錠後に読み込む） -->
