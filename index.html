@@ -139,7 +139,7 @@
 
   <!-- 名前を登録する（スキップした人向け・上部に表示） -->
   <button id="nameOpenBtn" type="button" hidden style="width:100%;margin-bottom:8px;padding:12px;border:0;border-radius:12px;background:var(--green);color:#fff;font:inherit;font-weight:700;cursor:pointer">👋 名前を登録する（任意）</button>
-  <a id="myEditBtn" href="https://shinsuteweb.github.io/shin-onestep-profile2/?edit=self" hidden style="display:block;width:100%;box-sizing:border-box;text-align:center;margin-bottom:12px;padding:12px;border-radius:12px;background:#315c84;color:#fff;font-weight:700;font-size:15px;text-decoration:none">✏️ 自分の自己紹介を編集する</a>
+  <a id="myEditBtn" href="https://shinsuteweb.github.io/shin-onestep-profile2/?edit=self" hidden style="display:block;width:100%;box-sizing:border-box;text-align:center;margin-bottom:12px;padding:12px;border-radius:12px;background:#315c84;color:#fff;text-decoration:none"><span id="myEditGreet" style="display:block;font-weight:700;font-size:15px"></span><span style="display:block;font-size:12.5px;opacity:.92;margin-top:3px">✏️ 自分の自己紹介を編集する</span></a>
 
   <!-- お誕生日（解錠後に読み込む） -->
   <section id="birthdayPanel" hidden style="margin-bottom:8px;padding:10px 12px">
@@ -633,6 +633,8 @@
   function nameHash(name, pass){ return sha256hex("onestep-name-v1:" + name + ":" + pass); }
   function showRegisteredUI(){
     // 登録済みのときはパネル自体を出さず、ステータス欄に「名前の登録を消す」だけ出す
+    var myName = getMyName();
+    document.getElementById("myEditGreet").textContent = myName ? (myName + "さん、おかえりなさい！") : "";
     document.getElementById("myEditBtn").hidden = false;
     document.getElementById("namePanel").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
