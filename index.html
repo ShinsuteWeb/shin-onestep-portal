@@ -139,6 +139,7 @@
 
   <!-- 名前を登録する（スキップした人向け・上部に表示） -->
   <button id="nameOpenBtn" type="button" hidden style="width:100%;margin-bottom:8px;padding:12px;border:0;border-radius:12px;background:var(--green);color:#fff;font:inherit;font-weight:700;cursor:pointer">👋 名前を登録する（任意）</button>
+  <a id="myEditBtn" href="https://shinsuteweb.github.io/shin-onestep-profile2/?edit=self" hidden style="display:block;width:100%;box-sizing:border-box;text-align:center;margin-bottom:12px;padding:12px;border-radius:12px;background:#315c84;color:#fff;font-weight:700;font-size:15px;text-decoration:none">✏️ 自分の自己紹介を編集する</a>
 
   <!-- お誕生日（解錠後に読み込む） -->
   <section id="birthdayPanel" hidden style="margin-bottom:8px;padding:10px 12px">
@@ -161,9 +162,6 @@
       <button class="primary" id="nameRegBtn" type="button">覚えてもらう</button>
       <div class="error" id="nameError" role="alert"></div>
       <p class="skip"><a href="#" id="nameSkip">今は入れない</a></p>
-    </div>
-      <div class="error" id="nameDelError" role="alert"></div>
-      <p class="hint">合言葉を忘れてしまったときは、管理人（あんちゃん）に連絡してください。</p>
     </div>
   </section>
 
@@ -337,6 +335,7 @@
     document.getElementById("namePanel").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = true;
+    document.getElementById("myEditBtn").hidden = true;
     document.getElementById("birthdayPanel").hidden = true;
     document.getElementById("votePanel").hidden = true;
     document.getElementById("threadPanel").hidden = true;
@@ -634,11 +633,13 @@
   function nameHash(name, pass){ return sha256hex("onestep-name-v1:" + name + ":" + pass); }
   function showRegisteredUI(){
     // 登録済みのときはパネル自体を出さず、ステータス欄に「名前の登録を消す」だけ出す
+    document.getElementById("myEditBtn").hidden = false;
     document.getElementById("namePanel").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = false;
   }
   function showNameForm(){
+    document.getElementById("myEditBtn").hidden = true;
     document.getElementById("nameRegForm").hidden = false;
     document.getElementById("namePanel").hidden = false;
     document.getElementById("nameOpenBtn").hidden = true;
@@ -658,6 +659,7 @@
     }
     if (getMyName()) { showRegisteredUI(); return; }
     if (nameSkipped()) {
+      document.getElementById("myEditBtn").hidden = true;
       document.getElementById("namePanel").hidden = true;
       document.getElementById("nameDelOpen").hidden = true;
       document.getElementById("nameOpenBtn").hidden = false;
@@ -710,6 +712,7 @@
     // 合言葉なしで、この端末からだけ名前を外す（サーバーの登録は残るので、名前は他人に取られない）
     if (!confirm("この端末から名前を外しますか？\n登録自体は残ります。また使いたいときは、名前と合言葉で戻れます。")) return;
     clearMyName();
+    document.getElementById("myEditBtn").hidden = true;
     setNameSkipped(true);
     document.getElementById("nameDelOpen").hidden = true;
     document.getElementById("nameOpenBtn").hidden = false;
