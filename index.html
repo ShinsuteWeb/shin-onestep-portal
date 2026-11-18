@@ -160,7 +160,7 @@
       <input type="password" id="namePass" autocomplete="new-password" placeholder="好きな言葉を決めてください">
       <button class="primary" id="nameRegBtn" type="button">覚えてもらう</button>
       <div class="error" id="nameError" role="alert"></div>
-      <a href="#" id="nameClose" style="display:inline-block;margin-top:10px;font-size:13px;color:var(--muted)">今はしない（閉じる）</a>
+      <button id="nameBrowseBtn" type="button" style="width:100%;margin-top:10px;padding:11px;border:1px solid #cfd9e2;border-radius:10px;background:#fff;color:#315c84;font:inherit;font-weight:700;cursor:pointer">登録しないで閲覧のみ</button>
     </div>
   </section>
 
@@ -666,7 +666,18 @@
       setTimeout(function(){
         location.href = "https://shinsuteweb.github.io/shin-onestep-profile2/?m=" + pm;
       }, 800);
+      return true;
     }
+    return false;
+  }
+  // 登録なしの閲覧モードの表示にする
+  function showBrowseUI(){
+    document.getElementById("myEditBtn").hidden = true;
+    document.getElementById("nameDelOpen").hidden = true;
+    document.getElementById("namePanel").hidden = true;
+    document.getElementById("nameOpenBtn").hidden = false;
+    menuPanel.hidden = false;
+    if (document.getElementById("birthdayBody").innerHTML) document.getElementById("birthdayPanel").hidden = false;
   }
   function showNameForm(){
     document.getElementById("myEditBtn").hidden = true;
@@ -688,13 +699,15 @@
       }
     }
     if (getMyName()) { showRegisteredUI(); return; }
-    // 未登録でも閲覧はできる。登録は任意で、ボタンからいつでも開ける
-    document.getElementById("myEditBtn").hidden = true;
-    document.getElementById("nameDelOpen").hidden = true;
-    document.getElementById("namePanel").hidden = true;
-    document.getElementById("nameOpenBtn").hidden = false;
-    menuPanel.hidden = false;
-    maybeRedirectM();
+    // 未登録の人には、まず登録を促す画面を出す（「閲覧のみ」を選んだ端末には次から出さない）
+    if (maybeRedirectM()) return;
+    if (!nameSkipped() && nameListCache.length) {
+      showNameForm();
+      menuPanel.hidden = true;
+      document.getElementById("birthdayPanel").hidden = true;
+      return;
+    }
+    showBrowseUI();
   }
   document.getElementById("nameRegBtn").addEventListener("click", async function(){
     var btn = this;
@@ -730,10 +743,10 @@
     var s = readStore();
     if (s) decryptPages(s.pw).then(function(pages){ setupNameUI(pages); }).catch(function(){});
   });
-  document.getElementById("nameClose").addEventListener("click", function(e){
-    e.preventDefault();
-    document.getElementById("namePanel").hidden = true;
-    document.getElementById("nameOpenBtn").hidden = false;
+  document.getElementById("nameBrowseBtn").addEventListener("click", function(){
+    // 登録せずに閲覧する。この端末では次から登録を促す画面を出さない
+    setNameSkipped(true);
+    showBrowseUI();
   });
   document.getElementById("nameDelOpen").addEventListener("click", function(){
     // 合言葉なしで、この端末からだけ名前を外す（サーバーの登録は残るので、名前は他人に取られない）
