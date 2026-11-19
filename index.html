@@ -109,6 +109,7 @@
   .news-text{font-size:13px;margin-top:2px;line-height:1.5}
   .news-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
   .news-meta a{color:#1c6ea4;text-decoration:none;font-weight:700}
+  .news-item{padding:7px 0;border-top:1px dashed rgba(0,0,0,.14)}
   .btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   .btn-row .logout{padding:8px 10px;font-size:11.5px;white-space:nowrap}
   #namePanel select{width:100%;height:48px;padding:0 12px;border:1px solid #d9ded8;border-radius:12px;font:inherit;background:#fff}
@@ -461,6 +462,21 @@
       var data = await r.json();
       var items = (data && data.items) || [];
       if (!items.length) return;
+      if (myName === "あんちゃん") {
+        var sorted = items.slice().sort(function(a, b){ return String(b.date || "").localeCompare(String(a.date || "")); });
+        var listHtml = "";
+        sorted.slice(0, 10).forEach(function(it, i){
+          var dd = String(it.date || "").split("-");
+          var dl = dd.length === 3 ? (+dd[1]) + "月" + (+dd[2]) + "日" : "";
+          listHtml += '<div class="news-item"' + (i === 0 ? ' style="border-top:none;padding-top:0"' : '') + '>'
+            + '<div class="news-title">『' + escapeHtml(it.work) + '』</div>'
+            + '<div class="news-text">' + escapeHtml(it.text) + '</div>'
+            + '<div class="news-meta">' + dl + (it.url ? ' ・ <a href="' + escapeHtml(it.url) + '" target="_blank" rel="noopener">くわしく見る ＞</a>' : '') + '</div></div>';
+        });
+        document.getElementById("newsBody").innerHTML = listHtml;
+        document.getElementById("newsPanel").hidden = false;
+        return;
+      }
       var now = new Date();
       var seed = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate() + ":" + myName;
       var favText = normWork(parseFavoritesOf(pages && pages.contents, myName));
