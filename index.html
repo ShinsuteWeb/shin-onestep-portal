@@ -169,7 +169,7 @@
   <section id="namePanel" hidden style="margin-bottom:8px;padding:14px 16px">
     <div id="nameRegForm">
       <h2 style="margin:0 0 6px;font-size:16.5px">👋 お名前の登録</h2>
-      <p class="desc" style="margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.7">お名前を登録すると、名前でお迎えしたり、自分の自己紹介を合言葉で編集したり、アニメ投票ができるようになります。登録しなくても、ポータルの閲覧はそのままできます。別の端末から入るときにも同じ合言葉をご利用ください。</p>
+      <p class="desc" style="margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.7">お名前を登録すると、名前でお迎えしたり、自分の自己紹介を合言葉で編集したり、アニメ投票ができるようになります。登録しなくても、ポータルの閲覧はそのままできます。別の端末から入るときにも同じ合言葉をご利用ください。登録したお名前は、ポータルの訪問記録にも残ります。</p>
       <label for="nameSelect">お名前（オプチャの名前）</label>
       <select id="nameSelect"><option value="">タップして選んでください</option></select>
       <label for="namePass" style="margin-top:14px">合言葉（自分だけの言葉・4文字以上）</label>
@@ -644,18 +644,22 @@
     fetchThreads().then(renderThreads).catch(function(){});
   }
 
-  // 訪問記録（回数のみ）。同じ端末からは1日1回だけ数え、表示だけの日は記録しない
+  // 訪問記録。同じ端末からは1日1回だけ数え、表示だけの日は記録しない。
+  // 登録済みの端末では、登録した名前も一緒に残す（未登録は名前なし）。
   var VISIT_KEY = "onestep.portal.visitDay";
+  // お名前登録の保存キー（訪問記録の記録でも使うため、ここで先に定義する）
+  var NAME_KEY = "onestep.portal.name.v1";
+  var NAME_SKIP_KEY = "onestep.portal.nameSkip";
   function jstToday(){
     try {
       return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     } catch (e) { return ""; }
   }
-  async function callVisitRpc(name){
+  async function callVisitRpc(name, body){
     var r = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + name, {
       method: "POST",
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
-      body: "{}"
+      body: JSON.stringify(body || {})
     });
     if (!r.ok) throw new Error("visit rpc failed");
     return r.json();
@@ -673,7 +677,7 @@
     var last = null;
     try { last = localStorage.getItem(VISIT_KEY); } catch (e) {}
     if (today && last !== today) {
-      callVisitRpc("log_portal_visit").then(function(d){
+      callVisitRpc("log_portal_visit", { p_name: getMyName() || null }).then(function(d){
         try { localStorage.setItem(VISIT_KEY, today); } catch (e) {}
         renderVisits(d);
       }).catch(function(){});
@@ -715,8 +719,6 @@
   // ===== お名前の登録（任意） =====
   // 名前は端末の中だけに期限なしで保存する（共通パスワードの30日保存とは別）。
   // 合言葉はハッシュ化してサーバーで照合するので、別の端末でも同じ人だと分かる。
-  var NAME_KEY = "onestep.portal.name.v1";
-  var NAME_SKIP_KEY = "onestep.portal.nameSkip";
   var PENDING_M_KEY = "onestep.portal.pendingM";
   // メインルームの投稿などから「?m=番号」で来たときは、行き先（その人の自己紹介）を覚えておく
   (function(){
