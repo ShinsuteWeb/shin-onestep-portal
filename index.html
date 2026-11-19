@@ -110,6 +110,7 @@
   .news-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
   .news-meta a{color:#1c6ea4;text-decoration:none;font-weight:700}
   .news-item{padding:7px 0;border-top:1px dashed rgba(0,0,0,.14)}
+  .news-toggle{display:block;width:100%;margin-top:8px;padding:7px 0;font-size:12.5px;font-weight:700;color:#1c6ea4;background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:9px;cursor:pointer}
   .btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   .btn-row .logout{padding:8px 10px;font-size:11.5px;white-space:nowrap}
   #namePanel select{width:100%;height:48px;padding:0 12px;border:1px solid #d9ded8;border-radius:12px;font:inherit;background:#fff}
@@ -463,17 +464,28 @@
       var items = (data && data.items) || [];
       if (!items.length) return;
       if (myName === "あんちゃん") {
-        var sorted = items.slice().sort(function(a, b){ return String(b.date || "").localeCompare(String(a.date || "")); });
-        var listHtml = "";
-        sorted.slice(0, 10).forEach(function(it, i){
+        var sorted = items.slice().sort(function(a, b){ return String(b.date || "").localeCompare(String(a.date || "")); }).slice(0, 10);
+        function itemHtml(it, first){
           var dd = String(it.date || "").split("-");
           var dl = dd.length === 3 ? (+dd[1]) + "月" + (+dd[2]) + "日" : "";
-          listHtml += '<div class="news-item"' + (i === 0 ? ' style="border-top:none;padding-top:0"' : '') + '>'
+          return '<div class="news-item"' + (first ? ' style="border-top:none;padding-top:0"' : '') + '>'
             + '<div class="news-title">『' + escapeHtml(it.work) + '』</div>'
             + '<div class="news-text">' + escapeHtml(it.text) + '</div>'
             + '<div class="news-meta">' + dl + (it.url ? ' ・ <a href="' + escapeHtml(it.url) + '" target="_blank" rel="noopener">くわしく見る ＞</a>' : '') + '</div></div>';
+        }
+        var firstHtml = itemHtml(sorted[0], true);
+        var restHtml = "";
+        sorted.slice(1).forEach(function(it){ restHtml += itemHtml(it, false); });
+        var btnHtml = sorted.length > 1 ? '<button type="button" id="newsToggleBtn" class="news-toggle">▼ もっと見る（あと' + (sorted.length - 1) + '件）</button>' : '';
+        document.getElementById("newsBody").innerHTML = firstHtml + '<div id="newsMore" hidden>' + restHtml + '</div>' + btnHtml;
+        var tBtn = document.getElementById("newsToggleBtn");
+        if (tBtn) tBtn.addEventListener("click", function(){
+          var m = document.getElementById("newsMore");
+          if (!m) return;
+          var willOpen = m.hidden;
+          m.hidden = !willOpen;
+          tBtn.textContent = willOpen ? "▲ 閉じる" : "▼ もっと見る（あと" + (sorted.length - 1) + "件）";
         });
-        document.getElementById("newsBody").innerHTML = listHtml;
         document.getElementById("newsPanel").hidden = false;
         return;
       }
