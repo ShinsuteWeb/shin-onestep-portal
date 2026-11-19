@@ -103,7 +103,12 @@
   .thread-h,.thread-note{text-shadow:0 1px 8px rgba(255,255,255,.85),0 0 3px rgba(255,255,255,.9)}
   .status{background:rgba(255,255,255,.82);border-radius:14px;padding:10px 16px}
   .foot-pill{background:rgba(255,255,255,.82);padding:4px 12px;border-radius:999px}
-  #birthdayPanel,#votePanel,#threadPanel,#themePanel,#namePanel{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(36,54,43,.05)}
+  #birthdayPanel,#votePanel,#threadPanel,#themePanel,#namePanel,#newsPanel{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(36,54,43,.05)}
+  .news-title{font-weight:700;font-size:14.5px}
+  .news-tag{display:inline-block;font-size:10.5px;font-weight:700;color:#fff;background:#5b93b8;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+  .news-text{font-size:13px;margin-top:2px;line-height:1.5}
+  .news-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .news-meta a{color:#1c6ea4;text-decoration:none;font-weight:700}
   .btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   .btn-row .logout{padding:8px 10px;font-size:11.5px;white-space:nowrap}
   #namePanel select{width:100%;height:48px;padding:0 12px;border:1px solid #d9ded8;border-radius:12px;font:inherit;background:#fff}
@@ -145,6 +150,12 @@
   <section id="birthdayPanel" hidden style="margin-bottom:8px;padding:10px 12px">
     <h2 class="bday-h">🎂 お誕生日</h2>
     <div id="birthdayBody"></div>
+  </section>
+
+  <!-- あなたへの新着情報（試験中：管理人だけに表示） -->
+  <section id="newsPanel" hidden style="margin-bottom:8px;padding:10px 12px">
+    <h2 class="bday-h">📰 あなたへの新着情報</h2>
+    <div id="newsBody"></div>
   </section>
 
 
@@ -337,6 +348,7 @@
     document.getElementById("nameDelOpen").hidden = true;
     document.getElementById("myEditBtn").hidden = true;
     document.getElementById("birthdayPanel").hidden = true;
+    document.getElementById("newsPanel").hidden = true;
     document.getElementById("votePanel").hidden = true;
     document.getElementById("threadPanel").hidden = true;
     document.getElementById("visitLine").hidden = true;
@@ -416,8 +428,83 @@
     return String(s).replace(/[&<>"']/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
   }
 
+  // ===== あなたへの新着情報（試験中：管理人だけに表示） =====
+  // news.json の中から、その人の自己紹介の「好きなもの」に挙げた作品の情報を優先し、
+  // なければ投票した作品の情報を、その日のランダムで1件だけ出す。どちらも無ければ一番人気の作品。
+  var NEWS_ADMIN_ONLY = true;
+  function normWork(s){ return String(s || "").replace(/[\s　・☆△！!？?、，,『』「」]/g, ""); }
+  function baseWork(s){ return String(s || "").replace(/\s*(第\d+期|第\d+クール|Season\s*\d+).*$/i, "").trim(); }
+  function parseFavoritesOf(contents, name){
+    var tables = String(contents || "").match(/<table>[\s\S]*?<\/table>/g) || [];
+    for (var i = 0; i < tables.length; i++) {
+      var nm = tables[i].match(/<strong>名前：<\/strong>([^<]+)/);
+      if (nm && nm[1].trim() === name) {
+        var fv = tables[i].match(/<strong>好きなもの：<\/strong>(?:<br\s*\/?>)?\s*([^<]+)/);
+        return fv ? fv[1] : "";
+      }
+    }
+    return "";
+  }
+  function dailyPick(arr, seedStr){
+    if (!arr.length) return null;
+    var h = 0;
+    for (var i = 0; i < seedStr.length; i++) { h = (h * 31 + seedStr.charCodeAt(i)) >>> 0; }
+    return arr[h % arr.length];
+  }
+  async function renderNews(pages){
+    try {
+      var myName = getMyName();
+      if (!myName) return;
+      if (NEWS_ADMIN_ONLY && myName !== "あんちゃん") return;
+      var r = await fetch("news.json", { cache: "no-store" });
+      if (!r.ok) return;
+      var data = await r.json();
+      var items = (data && data.items) || [];
+      if (!items.length) return;
+      var now = new Date();
+      var seed = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate() + ":" + myName;
+      var favText = normWork(parseFavoritesOf(pages && pages.contents, myName));
+      function favMatch(w){
+        var nw = normWork(w);
+        if (favText && nw && favText.indexOf(nw) >= 0) return true;
+        var bw = normWork(baseWork(w));
+        if (favText && bw && bw.length >= 2 && favText.indexOf(bw) >= 0) return true;
+        var hw = normWork(String(w).split(/[、,，]/)[0]);
+        return !!(favText && hw && hw.length >= 2 && favText.indexOf(hw) >= 0);
+      }
+      var pick = null, tag = "";
+      var favItems = items.filter(function(it){ return favMatch(it.work); });
+      if (favItems.length) { pick = dailyPick(favItems, seed); tag = "好きなもの"; }
+      var votes = null;
+      try { votes = await fetchVotes(); } catch (e) {}
+      if (!pick && votes) {
+        var myKey = null;
+        Object.keys(votes).forEach(function(k){ if (k === myName || k.split("（")[0] === myName) myKey = k; });
+        var myTitles = myKey ? ((votes[myKey] && votes[myKey].titles) || []) : [];
+        var voteItems = items.filter(function(it){ return myTitles.indexOf(it.work) >= 0; });
+        if (voteItems.length) { pick = dailyPick(voteItems, seed); tag = "投票した作品"; }
+      }
+      if (!pick && votes) {
+        var counts = {};
+        Object.keys(votes).forEach(function(k){ ((votes[k] || {}).titles || []).forEach(function(t){ counts[t] = (counts[t] || 0) + 1; }); });
+        var top = null, topC = -1;
+        Object.keys(counts).forEach(function(t){ if (counts[t] > topC) { topC = counts[t]; top = t; } });
+        var fb = items.filter(function(it){ return it.work === top; });
+        if (fb.length) { pick = fb[0]; tag = "いちばん人気の作品"; }
+      }
+      if (!pick) { pick = items[0]; tag = "いちばん人気の作品"; }
+      var d = String(pick.date || "").split("-");
+      var dateLabel = d.length === 3 ? (+d[1]) + "月" + (+d[2]) + "日" : "";
+      document.getElementById("newsBody").innerHTML =
+        '<div class="news-title">『' + escapeHtml(pick.work) + '』<span class="news-tag">' + tag + '</span></div>'
+        + '<div class="news-text">' + escapeHtml(pick.text) + '</div>'
+        + '<div class="news-meta">' + dateLabel + (pick.url ? ' ・ <a href="' + escapeHtml(pick.url) + '" target="_blank" rel="noopener">くわしく見る ＞</a>' : '') + '</div>';
+      document.getElementById("newsPanel").hidden = false;
+    } catch (e) {}
+  }
+
   function loadBirthdays(pw){
-    decryptPages(pw).then(function(pages){ renderBirthdays(pages); setupNameUI(pages); }).catch(function(e){
+    decryptPages(pw).then(function(pages){ renderBirthdays(pages); renderNews(pages); setupNameUI(pages); }).catch(function(e){
       if (e && e.name === "OperationError") { try { localStorage.removeItem(KEY); } catch (x) {} showLogin(); }
     });
   }
@@ -582,7 +669,7 @@
       }
       writeStore(pw);
       showMenu(readStore());
-      if (pages) { renderBirthdays(pages); setupNameUI(pages); } else loadBirthdays(pw);
+      if (pages) { renderBirthdays(pages); renderNews(pages); setupNameUI(pages); } else loadBirthdays(pw);
       loadVotes(); loadThreads(); loadVisits(); loadTheme();
     } catch (ex) {
       err.textContent = "パスワードが違います。もう一度入力してください。";
@@ -712,7 +799,7 @@
     document.getElementById("myEditBtn").hidden = false;
     menuPanel.hidden = false;
     var s = readStore();
-    if (s) decryptPages(s.pw).then(function(pages){ renderBirthdays(pages); renderMyWeather(pages); }).catch(function(){});
+    if (s) decryptPages(s.pw).then(function(pages){ renderBirthdays(pages); renderMyWeather(pages); renderNews(pages); }).catch(function(){});
     document.getElementById("namePanel").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = false;
