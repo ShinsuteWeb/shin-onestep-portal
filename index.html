@@ -430,10 +430,10 @@
     return String(s).replace(/[&<>"']/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
   }
 
-  // ===== あなたへの新着情報 =====
-  // news.json の中から、その人に関係する情報（自己紹介の「好きなもの」の作品・投票した作品）を全部出す。
-  // 最初は最新の1件だけ表示し、「もっと見る」ボタンで広げる。関係する情報が無ければ一番人気の作品を1件。
-  // 管理人（あんちゃん）だけは関係なく全件（最大10件）。
+  // ===== あなたへの新着情報（試験中：管理人だけに表示） =====
+  // news.json の中から、その人の自己紹介の「好きなもの」に挙げた作品の情報を優先し、
+  // なければ投票した作品の情報を、その日のランダムで1件だけ出す。どちらも無ければ一番人気の作品。
+  var NEWS_ADMIN_ONLY = true;
   function normWork(s){ return String(s || "").replace(/[\s　・☆△！!？?、，,『』「」]/g, ""); }
   function baseWork(s){ return String(s || "").replace(/\s*(第\d+期|第\d+クール|Season\s*\d+).*$/i, "").trim(); }
   function parseFavoritesOf(contents, name){
@@ -447,16 +447,50 @@
     }
     return "";
   }
+  function dailyPick(arr, seedStr){
+    if (!arr.length) return null;
+    var h = 0;
+    for (var i = 0; i < seedStr.length; i++) { h = (h * 31 + seedStr.charCodeAt(i)) >>> 0; }
+    return arr[h % arr.length];
+  }
   async function renderNews(pages){
     try {
       var myName = getMyName();
       if (!myName) return;
+      if (NEWS_ADMIN_ONLY && myName !== "あんちゃん") return;
       var r = await fetch("news.json", { cache: "no-store" });
       if (!r.ok) return;
       var data = await r.json();
       var items = (data && data.items) || [];
       if (!items.length) return;
-      var sortedAll = items.slice().sort(function(a, b){ return String(b.date || "").localeCompare(String(a.date || "")); });
+      if (myName === "あんちゃん") {
+        var sorted = items.slice().sort(function(a, b){ return String(b.date || "").localeCompare(String(a.date || "")); }).slice(0, 10);
+        function itemHtml(it, first){
+          var dd = String(it.date || "").split("-");
+          var dl = dd.length === 3 ? (+dd[1]) + "月" + (+dd[2]) + "日" : "";
+          return '<div class="news-item"' + (first ? ' style="border-top:none;padding-top:0"' : '') + '>'
+            + '<div class="news-title">『' + escapeHtml(it.work) + '』</div>'
+            + '<div class="news-text">' + escapeHtml(it.text) + '</div>'
+            + '<div class="news-meta">' + dl + (it.url ? ' ・ <a href="' + escapeHtml(it.url) + '" target="_blank" rel="noopener">くわしく見る ＞</a>' : '') + '</div></div>';
+        }
+        var firstHtml = itemHtml(sorted[0], true);
+        var restHtml = "";
+        sorted.slice(1).forEach(function(it){ restHtml += itemHtml(it, false); });
+        var btnHtml = sorted.length > 1 ? '<button type="button" id="newsToggleBtn" class="news-toggle">▼ もっと見る（あと' + (sorted.length - 1) + '件）</button>' : '';
+        document.getElementById("newsBody").innerHTML = firstHtml + '<div id="newsMore" hidden>' + restHtml + '</div>' + btnHtml;
+        var tBtn = document.getElementById("newsToggleBtn");
+        if (tBtn) tBtn.addEventListener("click", function(){
+          var m = document.getElementById("newsMore");
+          if (!m) return;
+          var willOpen = m.hidden;
+          m.hidden = !willOpen;
+          tBtn.textContent = willOpen ? "▲ 閉じる" : "▼ もっと見る（あと" + (sorted.length - 1) + "件）";
+        });
+        document.getElementById("newsPanel").hidden = false;
+        return;
+      }
+      var now = new Date();
+      var seed = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate() + ":" + myName;
       var favText = normWork(parseFavoritesOf(pages && pages.contents, myName));
       function favMatch(w){
         var nw = normWork(w);
@@ -466,64 +500,34 @@
         var hw = normWork(String(w).split(/[、,，]/)[0]);
         return !!(favText && hw && hw.length >= 2 && favText.indexOf(hw) >= 0);
       }
+      var pick = null, tag = "";
+      var favItems = items.filter(function(it){ return favMatch(it.work); });
+      if (favItems.length) { pick = dailyPick(favItems, seed); tag = "好きなもの"; }
       var votes = null;
       try { votes = await fetchVotes(); } catch (e) {}
-      var myTitles = [];
-      if (votes) {
+      if (!pick && votes) {
         var myKey = null;
         Object.keys(votes).forEach(function(k){ if (k === myName || k.split("（")[0] === myName) myKey = k; });
-        if (myKey) myTitles = (votes[myKey] && votes[myKey].titles) || [];
+        var myTitles = myKey ? ((votes[myKey] && votes[myKey].titles) || []) : [];
+        var voteItems = items.filter(function(it){ return myTitles.indexOf(it.work) >= 0; });
+        if (voteItems.length) { pick = dailyPick(voteItems, seed); tag = "投票した作品"; }
       }
-      function voteMatch(w){
-        var nw = normWork(w), bw = normWork(baseWork(w));
-        return myTitles.some(function(t){
-          var nt = normWork(t), bt = normWork(baseWork(t));
-          return nt === nw || bt === nw || nt === bw;
-        });
-      }
-      function renderList(list){
-        function itemHtml(it, tag, first){
-          var dd = String(it.date || "").split("-");
-          var dl = dd.length === 3 ? (+dd[1]) + "月" + (+dd[2]) + "日" : "";
-          return '<div class="news-item"' + (first ? ' style="border-top:none;padding-top:0"' : '') + '>'
-            + '<div class="news-title">『' + escapeHtml(it.work) + '』' + (tag ? '<span class="news-tag">' + tag + '</span>' : '') + '</div>'
-            + '<div class="news-text">' + escapeHtml(it.text) + '</div>'
-            + '<div class="news-meta">' + dl + (it.url ? ' ・ <a href="' + escapeHtml(it.url) + '" target="_blank" rel="noopener">くわしく見る ＞</a>' : '') + '</div></div>';
-        }
-        var firstHtml = itemHtml(list[0].item, list[0].tag, true);
-        var restHtml = "";
-        list.slice(1).forEach(function(e){ restHtml += itemHtml(e.item, e.tag, false); });
-        var btnHtml = list.length > 1 ? '<button type="button" id="newsToggleBtn" class="news-toggle">▼ もっと見る（あと' + (list.length - 1) + '件）</button>' : '';
-        document.getElementById("newsBody").innerHTML = firstHtml + '<div id="newsMore" hidden>' + restHtml + '</div>' + btnHtml;
-        var tBtn = document.getElementById("newsToggleBtn");
-        if (tBtn) tBtn.addEventListener("click", function(){
-          var m = document.getElementById("newsMore");
-          if (!m) return;
-          var willOpen = m.hidden;
-          m.hidden = !willOpen;
-          tBtn.textContent = willOpen ? "▲ 閉じる" : "▼ もっと見る（あと" + (list.length - 1) + "件）";
-        });
-        document.getElementById("newsPanel").hidden = false;
-      }
-      if (myName === "あんちゃん") {
-        renderList(sortedAll.slice(0, 10).map(function(it){ return { item: it, tag: "" }; }));
-        return;
-      }
-      var related = [];
-      sortedAll.forEach(function(it){
-        if (favMatch(it.work)) related.push({ item: it, tag: "好きなもの" });
-        else if (voteMatch(it.work)) related.push({ item: it, tag: "投票した作品" });
-      });
-      if (!related.length && votes) {
+      if (!pick && votes) {
         var counts = {};
         Object.keys(votes).forEach(function(k){ ((votes[k] || {}).titles || []).forEach(function(t){ counts[t] = (counts[t] || 0) + 1; }); });
         var top = null, topC = -1;
         Object.keys(counts).forEach(function(t){ if (counts[t] > topC) { topC = counts[t]; top = t; } });
-        var fb = sortedAll.filter(function(it){ return it.work === top; });
-        if (fb.length) related = [{ item: fb[0], tag: "いちばん人気の作品" }];
+        var fb = items.filter(function(it){ return it.work === top; });
+        if (fb.length) { pick = fb[0]; tag = "いちばん人気の作品"; }
       }
-      if (!related.length) related = [{ item: sortedAll[0], tag: "いちばん人気の作品" }];
-      renderList(related);
+      if (!pick) { pick = items[0]; tag = "いちばん人気の作品"; }
+      var d = String(pick.date || "").split("-");
+      var dateLabel = d.length === 3 ? (+d[1]) + "月" + (+d[2]) + "日" : "";
+      document.getElementById("newsBody").innerHTML =
+        '<div class="news-title">『' + escapeHtml(pick.work) + '』<span class="news-tag">' + tag + '</span></div>'
+        + '<div class="news-text">' + escapeHtml(pick.text) + '</div>'
+        + '<div class="news-meta">' + dateLabel + (pick.url ? ' ・ <a href="' + escapeHtml(pick.url) + '" target="_blank" rel="noopener">くわしく見る ＞</a>' : '') + '</div>';
+      document.getElementById("newsPanel").hidden = false;
     } catch (e) {}
   }
 
