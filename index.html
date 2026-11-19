@@ -139,7 +139,7 @@
 
   <!-- 名前を登録する（スキップした人向け・上部に表示） -->
   <button id="nameOpenBtn" type="button" hidden style="width:100%;margin-bottom:8px;padding:12px;border:0;border-radius:12px;background:var(--green);color:#fff;font:inherit;cursor:pointer"><span style="display:block;font-weight:700">👋 名前を登録する（任意）</span><span style="display:block;font-size:12.5px;opacity:.92;margin-top:3px">登録すると自己紹介の編集やアニメ投票ができます</span></button>
-  <a id="myEditBtn" href="https://shinsuteweb.github.io/shin-onestep-profile2/?edit=self" hidden style="display:block;width:100%;box-sizing:border-box;text-align:center;margin-bottom:12px;padding:12px;border-radius:12px;background:#315c84;color:#fff;text-decoration:none"><span id="myEditGreet" style="display:block;font-weight:700;font-size:15px"></span><span style="display:block;font-size:12.5px;opacity:.92;margin-top:3px">✏️ 自分の自己紹介を編集する</span></a>
+  <a id="myEditBtn" href="https://shinsuteweb.github.io/shin-onestep-profile2/?edit=self" hidden style="display:block;position:relative;width:100%;box-sizing:border-box;text-align:center;margin-bottom:12px;padding:12px;border-radius:12px;background:#315c84;color:#fff;text-decoration:none"><span id="myEditGreet" style="display:block;font-weight:700;font-size:15px"></span><span style="display:block;font-size:12.5px;opacity:.92;margin-top:3px">✏️ 自分の自己紹介を編集する</span><span id="myWeather" hidden style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:700;line-height:1.4;text-align:center"></span></a>
 
   <!-- お誕生日（解錠後に読み込む） -->
   <section id="birthdayPanel" hidden style="margin-bottom:8px;padding:10px 12px">
@@ -636,6 +636,65 @@
     });
     return out;
   }
+  function parseAreaOf(contents, name){
+    // 自己紹介の表から、その人の「住まい」を取り出す
+    var tables = String(contents || "").match(/<table>[\s\S]*?<\/table>/g) || [];
+    for (var i = 0; i < tables.length; i++){
+      var nm = tables[i].match(/<strong>名前：<\/strong>([^<]+)/);
+      if (nm && nm[1].trim() === name){
+        var ar = tables[i].match(/<strong>住まい：<\/strong>([^<]+)/);
+        return ar ? ar[1].trim() : "";
+      }
+    }
+    return "";
+  }
+  // 住まいの表記ゆれを、天気を取る地点（代表都市）に寄せる
+  var AREA_POINTS = [["札幌","札幌",43.06,141.35],["青森","青森",40.82,140.74],["宮城","仙台",38.27,140.87],["茨城","水戸",36.34,140.45],["栃木","宇都宮",36.56,139.88],["埼玉","さいたま",35.86,139.65],["千葉","千葉",35.61,140.12],["チーバ","千葉",35.61,140.12],["東京","東京",35.68,139.69],["都内","東京",35.68,139.69],["神奈川","横浜",35.44,139.64],["長野","長野",36.65,138.18],["静岡","静岡",34.98,138.38],["愛知","名古屋",35.18,136.91],["岐阜","岐阜",35.39,136.72],["三重","津",34.73,136.51],["京都","京都",35.01,135.77],["大阪","大阪",34.69,135.50],["兵庫","神戸",34.69,135.20],["島根","松江",35.47,133.05],["福岡","福岡",33.59,130.40],["明太子","福岡",33.59,130.40]];
+  var REGION_POINTS = [["北東北","青森",40.82,140.74],["東北","仙台",38.27,140.87],["関東","東京",35.68,139.69],["中部","名古屋",35.18,136.91],["関西","大阪",34.69,135.50],["近畿","大阪",34.69,135.50],["九州","福岡",33.59,130.40],["東日本","東京",35.68,139.69],["西日本","大阪",34.69,135.50]];
+  function pickPoint(text, list){
+    var best = null, bestIdx = Infinity;
+    list.forEach(function(p){ var i = text.indexOf(p[0]); if (i >= 0 && i < bestIdx){ bestIdx = i; best = p; } });
+    return best;
+  }
+  function areaToPoint(text){
+    if (!text) return null;
+    return pickPoint(text, AREA_POINTS) || pickPoint(text, REGION_POINTS);
+  }
+  function weatherEmoji(code){
+    if (code === 0) return "☀️";
+    if (code === 1) return "🌤️";
+    if (code === 2) return "⛅";
+    if (code === 3) return "☁️";
+    if (code === 45 || code === 48) return "🌫️";
+    if (code >= 51 && code <= 57) return "🌦️";
+    if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return "🌧️";
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "⛄";
+    if (code >= 95) return "⛈️";
+    return "🌡️";
+  }
+  async function renderMyWeather(pages){
+    var el = document.getElementById("myWeather");
+    if (!el) return;
+    var myName = getMyName();
+    if (!myName || !pages || !pages.contents) return;
+    var pt = areaToPoint(parseAreaOf(pages.contents, myName));
+    if (!pt) return;
+    try {
+      var r = await fetch("https://api.open-meteo.com/v1/forecast?latitude=" + pt[2] + "&longitude=" + pt[3] + "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo&forecast_days=1");
+      if (!r.ok) return;
+      var j = await r.json();
+      var d = j && j.daily;
+      if (!d || !d.weather_code || !d.weather_code.length) return;
+      var l1 = document.createElement("div");
+      l1.textContent = pt[1] + " " + weatherEmoji(d.weather_code[0]);
+      var l2 = document.createElement("div");
+      l2.style.cssText = "font-size:11px;opacity:.92;font-weight:400";
+      l2.textContent = Math.round(d.temperature_2m_max[0]) + "° / " + Math.round(d.temperature_2m_min[0]) + "°";
+      el.appendChild(l1);
+      el.appendChild(l2);
+      el.hidden = false;
+    } catch (e) {}
+  }
   async function callNameRpc(fn, body){
     var r = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + fn, {
       method: "POST",
@@ -653,7 +712,7 @@
     document.getElementById("myEditBtn").hidden = false;
     menuPanel.hidden = false;
     var s = readStore();
-    if (s) decryptPages(s.pw).then(function(pages){ renderBirthdays(pages); }).catch(function(){});
+    if (s) decryptPages(s.pw).then(function(pages){ renderBirthdays(pages); renderMyWeather(pages); }).catch(function(){});
     document.getElementById("namePanel").hidden = true;
     document.getElementById("nameOpenBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = false;
