@@ -870,6 +870,8 @@
   function setupNameUI(pages){
     if (pages && pages.contents) {
       var names = parseNames(pages.contents);
+      // 検証用アカウント（管理人の副垢）: 自己紹介サイトには載せず、登録名簿にだけ足す
+      if (!names.some(function(n){ return n.name === "あんちゃん2"; })) names.push({ name: "あんちゃん2", no: 999 });
       if (names.length) {
         nameListCache = names;
         var sel = document.getElementById("nameSelect");
