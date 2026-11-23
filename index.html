@@ -299,6 +299,7 @@
 (function(){
   "use strict";
   var KEY = "onestep.portal.v1";
+  var VISITED_KEY = "onestep.portal.visited";
   var HASH = "14e18b67771a66cb08559baef772ba9537688e3f5996e44beefbb8d9ae11772b";
   var DAYS = 30;
   var SUPABASE_URL = "https://dtihrpjoengpakwipehl.supabase.co";
@@ -342,6 +343,8 @@
     try { localStorage.setItem(KEY, JSON.stringify({ pw: pw, exp: Date.now() + DAYS * 24 * 60 * 60 * 1000 })); } catch (e) {}
   }
   function showMenu(j){
+    // ポータルを開いた端末の目印（自己紹介サイトの「ポータルに戻る」ボタンの判定に使う）
+    try { localStorage.setItem(VISITED_KEY, "1"); } catch (e) {}
     loginPanel.hidden = true;
     // 閲覧だけなら名前の登録なしでも中身を表示する
     menuPanel.hidden = false;
