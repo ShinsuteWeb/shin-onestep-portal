@@ -200,6 +200,11 @@
         <span><span class="t">アニメ投票</span><span class="s">今期の視聴アニメ投票</span></span>
         <span class="arrow">›</span>
       </a>
+      <a class="card" id="winterVoteCard" href="https://shinsuteweb.github.io/shin-onestep-AnimeVote4/" hidden>
+        <span class="icon">❄️</span>
+        <span><span class="t">2027冬アニメ投票</span><span class="s">来期の視聴アニメ投票（検証中）</span></span>
+        <span class="arrow">›</span>
+      </a>
 
   <!-- アニメ投票の途中経過（解錠後に読み込む） -->
   <section id="votePanel" hidden style="margin-bottom:8px;padding:10px 12px">
@@ -348,6 +353,7 @@
     loginPanel.hidden = true;
     // 閲覧だけなら名前の登録なしでも中身を表示する
     menuPanel.hidden = false;
+    updateWinterVoteCard();
     var left = Math.max(0, Math.ceil((j.exp - Date.now()) / (24 * 60 * 60 * 1000)));
     remainText.textContent = "ログイン中（この端末ではあと約" + left + "日間、パスワード入力なしで開けます）";
   }
@@ -738,6 +744,11 @@
     try { var j = JSON.parse(localStorage.getItem(NAME_KEY) || "null"); return (j && j.name) ? j.name : null; }
     catch (e) { return null; }
   }
+  // 2027冬アニメ投票のカードは検証中につき、あんちゃん本人の端末（登録名が「あんちゃん」）にだけ出す
+  function updateWinterVoteCard(){
+    var c = document.getElementById("winterVoteCard");
+    if (c) c.hidden = (getMyName() !== "あんちゃん");
+  }
   function setMyName(n){ try { localStorage.setItem(NAME_KEY, JSON.stringify({ name: n })); } catch (e) {} }
   function clearMyName(){ try { localStorage.removeItem(NAME_KEY); } catch (e) {} }
   function nameSkipped(){ try { return localStorage.getItem(NAME_SKIP_KEY) === "1"; } catch (e) { return false; } }
@@ -832,6 +843,7 @@
     document.getElementById("myEditGreet").textContent = myName ? (myName + "さん、おかえりなさい！") : "";
     document.getElementById("myEditBtn").hidden = false;
     menuPanel.hidden = false;
+    updateWinterVoteCard();
     var s = readStore();
     if (s) decryptPages(s.pw).then(function(pages){ renderBirthdays(pages); renderMyWeather(pages); renderNews(pages); }).catch(function(){});
     document.getElementById("namePanel").hidden = true;
@@ -937,6 +949,7 @@
     // 合言葉なしで、この端末からだけ名前を外す（サーバーの登録は残るので、名前は他人に取られない）
     if (!confirm("この端末から名前を外しますか？\n登録自体は残ります。ポータルの閲覧はそのままできますが、自分の紹介の編集やアニメ投票には、名前と合言葉での確認がまた必要になります。")) return;
     clearMyName();
+    updateWinterVoteCard();
     document.getElementById("myEditBtn").hidden = true;
     document.getElementById("nameDelOpen").hidden = true;
     document.getElementById("namePanel").hidden = true;
